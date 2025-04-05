@@ -1,28 +1,45 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketIo(server);
 
-app.use(express.static('public')); // Servir les fichiers statiques depuis le dossier 'public'
+let players = {}; // Garder une trace des joueurs et de leurs positions
 
+// Connexion d'un joueur
 io.on('connection', (socket) => {
-    console.log('Un utilisateur s\'est connecté : ' + socket.id);
+  console.log('Un joueur est connecté : ' + socket.id);
 
-    // Recevoir la position du joueur et la diffuser aux autres
+  // Ajouter un joueur
+  players[socket.id] = {
+    position: { x: 0, y: 1, z: 0 }, // Position initiale
+  };
+
+  // Envoyer la position de tous les autres joueurs au nouveau joueur
+  socket.emit('initialPositions', players);
+
+  // Mettre à jour la position d'un joueur
     socket.on('updatePosition', (data) => {
-        socket.broadcast.emit('playerMoved', { id: socket.id, position: data.position });
+    players[socket.id].position = data.position;
+
+    // Envoyer la position mise à jour à tous les autres joueurs
+    socket.broadcast.emit('playerMoved', {
+      id: socket.id,
+      position: data.position,
+    });
     });
 
-    // Gérer la déconnexion du joueur
+  // Lorsqu'un joueur se déconnecte
     socket.on('disconnect', () => {
-        console.log('Utilisateur déconnecté : ' + socket.id);
-        socket.broadcast.emit('playerDisconnected', { id: socket.id });
+    console.log('Un joueur est déconnecté : ' + socket.id);
+    delete players[socket.id];
+    socket.broadcast.emit('playerDisconnected', socket.id);
     });
 });
 
+// Démarrer le serveur sur le port 3000
 server.listen(3000, () => {
-    console.log('Serveur en écoute sur le port 3000');
+  console.log('Serveur démarré sur http://localhost:3000');
 });
