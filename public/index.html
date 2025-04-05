@@ -28,83 +28,62 @@
 		}
 		</script>
     
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+    
+    <!-- Charger Socket.io depuis un CDN -->
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+
 
     <script>
       const socket = io();
-    
-      // Crée un objet pour chaque joueur
-      const players = {};
-    
-      // Recevoir la position de tous les joueurs (au début)
-      socket.on('initialPositions', (data) => {
-        Object.keys(data).forEach((id) => {
-          if (id !== socket.id) {
-            createPlayer(id, data[id].position);
-          }
-        });
-      });
-    
-      // Recevoir la position mise à jour d'un autre joueur
-      socket.on('playerMoved', (data) => {
-        if (players[data.id]) {
-          players[data.id].mesh.position.set(data.position.x, data.position.y, data.position.z);
-        } else {
-          createPlayer(data.id, data.position); // Si le joueur n'est pas encore créé, le créer
-        }
-      });
-    
-      // Gérer la déconnexion d'un joueur
-      socket.on('playerDisconnected', (id) => {
-        if (players[id]) {
-          scene.remove(players[id].mesh); // Retirer le joueur de la scène
-          delete players[id];
-        }
-      });
-    
-      // Créer un joueur (un cube ici, mais tu peux le personnaliser)
-      function createPlayer(id, position) {
-        const geometry = new THREE.BoxGeometry(1, 2, 1); // Cube pour représenter le joueur
-        const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(position.x, position.y, position.z);
-        scene.add(mesh);
-    
-        players[id] = { mesh };
-      }
-    
-      // Envoyer la position du joueur au serveur
-      function sendPosition() {
-        socket.emit('updatePosition', { position: playerCollider.end });
-      }
-    
-      // Modifier la position du joueur en fonction des contrôles
-      function updatePlayerPosition(deltaTime) {
-        controls(deltaTime); // Déplacer le joueur selon les entrées clavier
-        sendPosition(); // Envoyer la position au serveur
-      }
-    
-      // Remplacer l'animation de ton joueur avec celle-ci
-      function animate() {
-        const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
-    
-        for (let i = 0; i < STEPS_PER_FRAME; i++) {
-          updatePlayerPosition(deltaTime);
-          updatePlayer(deltaTime);
-          updateSpheres(deltaTime);
-          teleportPlayerIfOob();
-          JumperCollision();
-          JumperCollisionG();
-          Checkpoint();
-        }
-    
-        renderer.render(scene, camera);
-      }
+
+let players = {};
+
+function createPlayerModel(playerId, playerData) {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+    const playerMesh = new THREE.Mesh(geometry, material);
+    playerMesh.position.set(playerData.x, playerData.y, playerData.z);
+    scene.add(playerMesh);
+    players[playerId] = playerMesh;
+}
+
+function updatePlayerPosition(playerId, playerData) {
+    if (players[playerId]) {
+        players[playerId].position.set(playerData.x, playerData.y, playerData.z);
+    }
+}
+
+function removePlayerModel(playerId) {
+    if (players[playerId]) {
+        scene.remove(players[playerId]);
+        delete players[playerId];
+    }
+}
+
+socket.on('currentPlayers', (existingPlayers) => {
+    for (const playerId in existingPlayers) {
+        createPlayerModel(playerId, existingPlayers[playerId]);
+    }
+});
+
+socket.on('playerMoved', (data) => {
+    const { id, playerData } = data;
+    if (players[id]) {
+        updatePlayerPosition(id, playerData);
+    } else {
+        createPlayerModel(id, playerData);
+    }
+});
+
+socket.on('playerDisconnected', (playerId) => {
+    removePlayerModel(playerId);
+});
+
     </script>
-    >
+    
     
     <script type="module">
+      
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -112,6 +91,7 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 
 const clock = new THREE.Clock();
 
@@ -282,6 +262,12 @@ loaderp.load('sky.jpg', (texture) => {
   playerCollisions();
 
   camera.position.copy(playerCollider.end);
+  socket.emit('playerMoved', {
+    x: playerCollider.end.x,
+    y: playerCollider.end.y,
+    z: playerCollider.end.z
+});
+
 }
 
 
