@@ -5,7 +5,14 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// ⚠️ Autoriser CORS
+const io = new Server(server, {
+    cors: {
+        origin: '*', // en prod, remplace par ton domaine frontend
+        methods: ['GET', 'POST']
+    }
+});
 
 const players = {};
 
@@ -35,7 +42,8 @@ io.on('connection', (socket) => {
     });
 });
 
-// Démarrer le serveur
-server.listen(3000, () => {
-    console.log('Serveur Socket.io lancé sur http://localhost:3000');
+// ✅ Port dynamique pour Render
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Serveur Socket.io lancé sur http://localhost:${PORT}`);
 });
