@@ -21,7 +21,7 @@ io.on('connection', (socket) => {
   socket.emit('initialPositions', players);
 
   // Mettre à jour la position d'un joueur
-    socket.on('updatePosition', (data) => {
+  socket.on('updatePosition', (data) => {
     players[socket.id].position = data.position;
 
     // Envoyer la position mise à jour à tous les autres joueurs
@@ -29,14 +29,14 @@ io.on('connection', (socket) => {
       id: socket.id,
       position: data.position,
     });
-    });
+  });
 
   // Lorsqu'un joueur se déconnecte
-    socket.on('disconnect', () => {
+  socket.on('disconnect', () => {
     console.log('Un joueur est déconnecté : ' + socket.id);
     delete players[socket.id];
     socket.broadcast.emit('playerDisconnected', socket.id);
-    });
+  });
 });
 
 // Démarrer le serveur sur le port 3000

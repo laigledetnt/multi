@@ -31,7 +31,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
     <script>
-        const socket = io();
+      const socket = io();
     
       // Crée un objet pour chaque joueur
       const players = {};
@@ -46,15 +46,15 @@
       });
     
       // Recevoir la position mise à jour d'un autre joueur
-        socket.on('playerMoved', (data) => {
+      socket.on('playerMoved', (data) => {
         if (players[data.id]) {
           players[data.id].mesh.position.set(data.position.x, data.position.y, data.position.z);
         } else {
           createPlayer(data.id, data.position); // Si le joueur n'est pas encore créé, le créer
         }
-        });
+      });
     
-        // Gérer la déconnexion d'un joueur
+      // Gérer la déconnexion d'un joueur
       socket.on('playerDisconnected', (id) => {
         if (players[id]) {
           scene.remove(players[id].mesh); // Retirer le joueur de la scène
