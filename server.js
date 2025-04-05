@@ -7,10 +7,10 @@ const app = express();
 const server = http.createServer(app);
 
 // ⚠️ Autoriser CORS
-const io = new Server(server, {
+const io = require('socket.io')(server, {
     cors: {
-        origin: '*', // en prod, remplace par ton domaine frontend
-        methods: ['GET', 'POST']
+        origin: '*', // Accepter les requêtes depuis n'importe quelle origine
+        methods: ['GET', 'POST'],
     }
 });
 
