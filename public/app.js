@@ -12,23 +12,40 @@ import { Capsule } from 'three/addons/math/Capsule.js';
 const socket = io();
 
   let players = {};
+  let otherPlayers = {};
   const scene = new THREE.Scene(); // besoin ici aussi
 
   function createPlayerModel(playerId, playerData) {
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
-    const playerMesh = new THREE.Mesh(geometry, material);
-    playerMesh.position.set(playerData.x, playerData.y, playerData.z);
-    scene.add(playerMesh);
-    players[playerId] = playerMesh;
+    const loader = new GLTFLoader();
+    loader.load('player.glb', (gltf) => {
+      const playerModel = gltf.scene;
+      playerModel.scale.set(0.2, 0.173, 0.2);  // Tu peux ajuster l'échelle ici si nécessaire
+      playerModel.position.set(playerData.x, playerData.y + 1, playerData.z);
+      scene.add(playerModel);
+      players[playerId] = playerModel;
+      otherPlayers[playerId] = playerModel;
+  
+      // Optionnel : tu peux ajouter une animation au modèle si nécessaire
+      if (gltf.animations && gltf.animations.length) {
+        const mixer = new THREE.AnimationMixer(playerModel);
+        gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+        playerModel.userData.mixer = mixer;  // Conserver la référence du mixer pour la mise à jour des animations
+      }
+      playerModel.userData.initialPosition = playerModel.position.clone();
+    });
   }
+  
 
-  function updatePlayerPosition(playerId, playerData) {
-    if (players[playerId]) {
-      players[playerId].position.set(playerData.x, playerData.y, playerData.z);
+  function updatePlayerPosition(id, playerData) {
+    if (otherPlayers[id]) {
+        otherPlayers[id].position.set(playerData.x, playerData.y + 1, playerData.z);
+        
+        // 👇 Assure-toi que la rotation est bien utilisée
+        if (typeof playerData.rotationY === 'number') {
+            otherPlayers[id].rotation.y = playerData.rotationY + Math.PI ;
+        }
     }
-  }
-
+}
   function removePlayerModel(playerId) {
     if (players[playerId]) {
       scene.remove(players[playerId]);
@@ -50,6 +67,7 @@ const socket = io();
       createPlayerModel(id, playerData);
     }
   });
+  
 
   socket.on('playerDisconnected', (playerId) => {
     removePlayerModel(playerId);
@@ -225,7 +243,9 @@ loaderp.load('sky.jpg', (texture) => {
   socket.emit('playerMoved', {
     x: playerCollider.end.x,
     y: playerCollider.end.y,
-    z: playerCollider.end.z
+    z: playerCollider.end.z,
+    rotationY: +camera.rotation.y,
+    
 });
 
 }

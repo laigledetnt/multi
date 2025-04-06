@@ -39,6 +39,7 @@ io.on('connection', (socket) => {
     socket.on('playerMoved', (playerData) => {
         players[socket.id] = playerData;
         socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
+        
     });
 
     // Déconnexion
