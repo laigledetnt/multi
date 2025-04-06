@@ -30,67 +30,98 @@ socket.on('chat message', ({ id, message }) => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-  let players = {};
-  let otherPlayers = {};
-  const scene = new THREE.Scene(); // besoin ici aussi
+let players = {}; // Un seul objet pour gérer tous les modèles des joueurs
+let scene = new THREE.Scene(); // Définir la scène
 
-  function createPlayerModel(playerId, playerData) {
-    const loader = new GLTFLoader();
-    loader.load('player.glb', (gltf) => {
-      const playerModel = gltf.scene;
-      playerModel.scale.set(0.5, 0.5, 0.5);  // Tu peux ajuster l'échelle ici si nécessaire
-      playerModel.position.set(playerData.x, playerData.y , playerData.z);
-      scene.add(playerModel);
-      players[playerId] = playerModel;
-      otherPlayers[playerId] = playerModel;
-  
-      // Optionnel : tu peux ajouter une animation au modèle si nécessaire
-      if (gltf.animations && gltf.animations.length) {
-        const mixer = new THREE.AnimationMixer(playerModel);
-        gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
-        playerModel.userData.mixer = mixer;  // Conserver la référence du mixer pour la mise à jour des animations
-      }
-      playerModel.userData.initialPosition = playerModel.position.clone();
-    });
+// Crée un modèle de joueur
+function createPlayerModel(playerId, playerData) {
+  // Vérifie si le modèle du joueur existe déjà
+  if (players[playerId]) {
+    console.log(`Le joueur ${playerId} existe déjà, pas besoin de le recréer.`);
+    return; // Ne pas créer le modèle si déjà existant
   }
-  
 
-  function updatePlayerPosition(id, playerData) {
-    if (otherPlayers[id]) {
-        otherPlayers[id].position.set(playerData.x, playerData.y -1 , playerData.z);
-        
-        // 👇 Assure-toi que la rotation est bien utilisée
-        if (typeof playerData.rotationY === 'number') {
-            otherPlayers[id].rotation.y = playerData.rotationY + Math.PI ;
-        }
+  console.log(`Création du modèle pour le joueur ${playerId}`);
+  const loader = new GLTFLoader();
+  loader.load('player.glb', (gltf) => {
+    const playerModel = gltf.scene;
+    playerModel.scale.set(0.5, 0.5, 0.5);  // Ajuster l'échelle
+    playerModel.position.set(playerData.x, playerData.y, playerData.z);
+    scene.add(playerModel);
+    players[playerId] = playerModel; // Enregistrer le modèle dans players
+    console.log(`Modèle du joueur ${playerId} ajouté à la scène`);
+
+    // Ajouter les animations si elles existent
+    if (gltf.animations && gltf.animations.length) {
+      const mixer = new THREE.AnimationMixer(playerModel);
+      gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+      playerModel.userData.mixer = mixer;
     }
+
+    playerModel.userData.initialPosition = playerModel.position.clone();
+  });
 }
-  function removePlayerModel(playerId) {
-    if (players[playerId]) {
-      scene.remove(players[playerId]);
-      delete players[playerId];
+
+
+// Met à jour la position du joueur existant
+function updatePlayerPosition(id, playerData) {
+  const playerModel = players[id];
+  if (playerModel) {
+    console.log(`Mise à jour de la position du joueur ${id}`);
+    playerModel.position.set(playerData.x, playerData.y-1, playerData.z);
+    
+    // Mettre à jour la rotation si spécifiée
+    if (typeof playerData.rotationY === 'number') {
+      playerModel.rotation.y = +playerData.rotationY + Math.PI; // Ajuster la rotation
     }
   }
+}
 
-  socket.on('currentPlayers', (existingPlayers) => {
-    for (const playerId in existingPlayers) {
-      createPlayerModel(playerId, existingPlayers[playerId]);
-    }
-  });
+// Supprimer le modèle du joueur déconnecté
+function removePlayerModel(playerId) {
+  const playerModel = players[playerId];
+  if (playerModel) {
+    scene.remove(playerModel); // Retirer le modèle de la scène
+    playerModel.traverse((child) => {
+      if (child.isMesh) {
+        child.geometry.dispose(); // Libérer la géométrie
+        if (child.material instanceof THREE.Material) {
+          child.material.dispose(); // Libérer les matériaux
+        }
+      }
+    });
+    delete players[playerId]; // Retirer le modèle du gestionnaire
+    console.log(`Modèle du joueur ${playerId} supprimé de la scène`);
+  }
+}
 
-  socket.on('playerMoved', (data) => {
-    const { id, playerData } = data;
-    if (players[id]) {
-      updatePlayerPosition(id, playerData);
-    } else {
-      createPlayerModel(id, playerData);
-    }
-  });
-  
 
-  socket.on('playerDisconnected', (playerId) => {
-    removePlayerModel(playerId);
-  });
+
+socket.on('currentPlayers', (existingPlayers) => {
+  console.log('Chargement des joueurs existants');
+  for (const playerId in existingPlayers) {
+    createPlayerModel(playerId, existingPlayers[playerId]);
+  }
+});
+
+socket.on('playerMoved', (data) => {
+  const { id, playerData } = data;
+  console.log(`Mouvement du joueur ${id}`);
+  if (players[id]) {
+    // Si le joueur existe déjà, on met à jour sa position
+    updatePlayerPosition(id, playerData);
+  } else {
+    // Sinon, on crée un modèle pour le joueur
+    createPlayerModel(id, playerData);
+  }
+});
+
+socket.on('playerDisconnected', (playerId) => {
+  console.log(`Joueur déconnecté: ${playerId}`);
+  // Supprimer le modèle du joueur déconnecté
+  removePlayerModel(playerId);
+});
+
 const clock = new THREE.Clock();
 
 
