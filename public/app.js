@@ -9,7 +9,26 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 // import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-const socket = io();
+const socket = io(); // Utilisé pour le jeu et le chat
+
+// Ajoute ce code chat ici aussi :
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
+
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+    const message = chatInput.value.trim();
+    socket.emit('chat message', message);
+    chatInput.value = '';
+  }
+});
+
+socket.on('chat message', ({ id, message }) => {
+  const msgElement = document.createElement('div');
+  msgElement.textContent = `[${id}] ${message}`;
+  chatMessages.appendChild(msgElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+});
 
   let players = {};
   let otherPlayers = {};
@@ -423,6 +442,7 @@ function teleportPlayerIfOob() {
         camera.position.copy(playerCollider.end);
     }
 }
+
 // const stats = new Stats();
 // document.body.appendChild(stats.dom);
 

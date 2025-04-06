@@ -6,7 +6,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Définir une politique CSP
+// Politique CSP
 app.use((req, res, next) => {
     res.setHeader("Content-Security-Policy", 
         "default-src 'self'; " +
@@ -18,28 +18,30 @@ app.use((req, res, next) => {
     next();
 });
 
-// Servir le favicon
-app.use(express.static('public'));  // Assure-toi que ton favicon.ico se trouve dans un dossier public accessible
+// Fichiers statiques
+app.use(express.static('public'));
 
 const players = {};
 
 io.on('connection', (socket) => {
     console.log('Un joueur connecté :', socket.id);
 
-    // Envoyer tous les joueurs actuels
+    // Envoi de la liste actuelle des joueurs
     socket.emit('currentPlayers', players);
 
-    // Ajouter ce joueur
+    // Ajout du joueur
     players[socket.id] = { x: 0, y: 10, z: 0 };
-
-    // Informer les autres
     socket.broadcast.emit('playerMoved', { id: socket.id, playerData: players[socket.id] });
 
-    // Mise à jour de position
+    // Réception d'un mouvement
     socket.on('playerMoved', (playerData) => {
         players[socket.id] = playerData;
         socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
-        
+    });
+
+    // Réception d'un message de chat
+    socket.on('chat message', (msg) => {
+        io.emit('chat message', { id: socket.id.slice(0, 5), message: msg });
     });
 
     // Déconnexion
@@ -50,7 +52,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Démarrer le serveur
+// Lancement du serveur
 server.listen(3000, () => {
     console.log('Serveur Socket.io lancé sur http://localhost:3000');
 });
