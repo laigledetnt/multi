@@ -19,8 +19,8 @@ const socket = io();
     const loader = new GLTFLoader();
     loader.load('player.glb', (gltf) => {
       const playerModel = gltf.scene;
-      playerModel.scale.set(0.2, 0.173, 0.2);  // Tu peux ajuster l'échelle ici si nécessaire
-      playerModel.position.set(playerData.x, playerData.y + 1, playerData.z);
+      playerModel.scale.set(0.5, 0.5, 0.5);  // Tu peux ajuster l'échelle ici si nécessaire
+      playerModel.position.set(playerData.x, playerData.y , playerData.z);
       scene.add(playerModel);
       players[playerId] = playerModel;
       otherPlayers[playerId] = playerModel;
@@ -38,7 +38,7 @@ const socket = io();
 
   function updatePlayerPosition(id, playerData) {
     if (otherPlayers[id]) {
-        otherPlayers[id].position.set(playerData.x, playerData.y + 1, playerData.z);
+        otherPlayers[id].position.set(playerData.x, playerData.y -1 , playerData.z);
         
         // 👇 Assure-toi que la rotation est bien utilisée
         if (typeof playerData.rotationY === 'number') {
