@@ -401,14 +401,14 @@ function JumperCollisionG() {
         const result = playerCollider.intersectsBox(jumperGBox);
 
         if (result) {
-            playerVelocity.y = 300; 
+            playerVelocity.y = 100; 
         }
     });
 }
 
 const loader = new GLTFLoader();
 
-      let jumpersG = []; //for op
+      let jumpersG = []; 
       let jumpers = [];
       let checkpoints = [];
       let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
