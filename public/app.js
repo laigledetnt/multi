@@ -398,6 +398,7 @@ loader.load('world.glb', (gltf) => {
     gltf.scene.position.set(0, 3, 0);
     gltf.scene.updateMatrixWorld(true);
     worldOctree.fromGraphNode(gltf.scene); 
+    
 
     gltf.scene.traverse((child) => {
         if (child.isMesh && child.name.includes("Checkpoint")) {
