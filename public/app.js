@@ -368,6 +368,7 @@ function JumperCollisionG() {
 }
 
 const loader = new GLTFLoader();
+
       let jumpersG = []; //for op
       let jumpers = [];
       let checkpoints = [];
