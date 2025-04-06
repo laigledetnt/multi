@@ -1,41 +1,37 @@
-// server.js
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketIo(server);
 
-const players = {};
+let players = {};  // Object to store players' positions
+
+// Servir les fichiers statiques de Three.js et du client
+app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    console.log('Un joueur connecté :', socket.id);
+    console.log('Un joueur est connecté : ' + socket.id);
 
-    // Envoyer tous les joueurs actuels
+    // Envoyer la position des autres joueurs au nouveau joueur
     socket.emit('currentPlayers', players);
 
-    // Ajouter ce joueur
-    players[socket.id] = { x: 0, y: 10, z: 0 };
-
-    // Informer les autres
-    socket.broadcast.emit('playerMoved', { id: socket.id, playerData: players[socket.id] });
-
-    // Mise à jour de position
+    // Gérer le mouvement des joueurs
     socket.on('playerMoved', (playerData) => {
-        players[socket.id] = playerData;
-        socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
+        players[socket.id] = playerData;  // Mettre à jour la position du joueur
+        // Envoyer la nouvelle position à tous les autres joueurs
+        io.emit('playerMoved', { id: socket.id, playerData });
     });
 
-    // Déconnexion
+    // Lorsque le joueur se déconnecte
     socket.on('disconnect', () => {
-        console.log('Déconnecté :', socket.id);
-        delete players[socket.id];
-        io.emit('playerDisconnected', socket.id);
+        console.log('Un joueur s\'est déconnecté : ' + socket.id);
+        delete players[socket.id];  // Supprimer le joueur de la liste
+        io.emit('playerDisconnected', socket.id);  // Informer les autres joueurs
     });
 });
 
-// Démarrer le serveur
 server.listen(3000, () => {
-    console.log('Serveur Socket.io lancé sur http://localhost:3000');
+    console.log('Serveur démarré sur http://localhost:3000');
 });
