@@ -63,17 +63,15 @@ function updatePlayerPosition(id, playerData) {
   }
 }
 
-// Supprimer le modèle du joueur déconnecté
+
 function removePlayerModel(playerId) {
   const playerModel = players[playerId];
   if (playerModel) {
-    scene.remove(playerModel); // Retirer le modèle de la scène
+    scene.remove(playerModel); 
     playerModel.traverse((child) => {
       if (child.isMesh) {
-        child.geometry.dispose(); // Libérer la géométrie
-        if (child.material instanceof THREE.Material) {
-          child.material.dispose(); // Libérer les matériaux
-        }
+        child.geometry.dispose(); 
+       
       }
     });
     delete players[playerId]; // Retirer le modèle du gestionnaire
