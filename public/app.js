@@ -32,41 +32,28 @@ socket.on('chat message', ({ id, message }) => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-let players = {}; // Un seul objet pour gérer tous les modèles des joueurs
-let scene = new THREE.Scene(); // Définir la scène
+let players = {}; 
+let scene = new THREE.Scene(); 
 
 // Crée un modèle de joueur
 function createPlayerModel(id, playerData) {
   if (id === socket.id) return;
-  // Vérifie si le modèle du joueur existe déjà
-  if (players[id]) {
-    console.log(`Le joueur ${id} existe déjà, pas besoin de le recréer.`);
-    return; // Ne pas créer le modèle si déjà existant
-  }
 
-  console.log(`Création du modèle pour le joueur ${id}`);
   const loader = new GLTFLoader();
   loader.load('player.glb', (gltf) => {
+
     const playerModel = gltf.scene;
-    playerModel.scale.set(0.5, 0.5, 0.5);  // Ajuster l'échelle
-    playerModel.position.set(playerData.x, playerData.y-1, playerData.z);
+
+    playerModel.scale.set(0.5, 0.5, 0.5);  
+    
+   playerModel.userData.initialPosition = playerModel.position.clone();
     scene.add(playerModel);
-    players[id] = playerModel; // Enregistrer le modèle dans players
-    console.log(`Modèle du joueur ${id} ajouté à la scène`);
-
-    // Ajouter les animations si elles existent
-    if (gltf.animations && gltf.animations.length) {
-      const mixer = new THREE.AnimationMixer(playerModel);
-      gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
-      playerModel.userData.mixer = mixer;
-    }
-
-    playerModel.userData.initialPosition = playerModel.position.clone();
+    players[id] = playerModel;
   });
 }
 
 
-// Met à jour la position du joueur existant
+
 function updatePlayerPosition(id, playerData) {
   const playerModel = players[id];
   if (playerModel) {
