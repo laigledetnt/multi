@@ -35,13 +35,18 @@
 
   <body>
     <div id="container"></div>
+    <!-- Ajoute ceci dans ton HTML -->
+    <div id="name-entry-container" style="display: none;">
+      <input type="text" id="player-name" placeholder="Entrez votre nom" />
+      <button id="submit-name">Valider</button>
+    </div>
 
-    <!-- Interface du chat -->
-    <div id="chat-container" style="position: absolute; bottom: 10px; left: 10px; width: 300px; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.5); color: white; padding: 10px; font-family: sans-serif; font-size: 14px; border-radius: 8px;">
+    
+    <div id="chat-container" style="position: absolute; bottom: 10px; left: 10px; width: 300px; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0); color: white; padding: 10px; font-family: sans-serif; font-size: 14px; border-radius: 8px;">
       <div id="chat-messages"></div>
       <input id="chat-input" type="text" placeholder="Appuie sur Entrée pour envoyer..." style="width: 100%; margin-top: 5px; padding: 5px; border-radius: 4px; border: none;" />
     </div>
-
+    
 
   </body>
 </html>

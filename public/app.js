@@ -13,20 +13,61 @@ const socket = io();
 
 // Lors de la connexion au serveur
 socket.on('connect', () => {
-  console.log('Connecté au serveur Socket.io avec ID:', socket.id);
+ // Attendre que l'utilisateur saisisse son nom
+const nameEntryContainer = document.getElementById('name-entry-container');
+const playerNameInput = document.getElementById('player-name');
+const submitNameButton = document.getElementById('submit-name');
+
+// Afficher le formulaire de saisie
+nameEntryContainer.style.display = 'block';
+
+// Lorsque le joueur appuie sur le bouton de validation
+submitNameButton.addEventListener('click', () => {
+  const playerName = playerNameInput.value.trim();
+  
+  if (playerName) {
+    // Masquer le formulaire de saisie et envoyer le nom au serveur
+    nameEntryContainer.style.display = 'none';
+    socket.emit('setPlayerName', playerName);
+  } 
+});
+
+// Optionnel : gérer la touche "Entrée" pour valider le nom
+playerNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    submitNameButton.click();
+  }
+});
+
+});
+
+
+// Demander au joueur de saisir son nom
+
+
+// Envoyer le nom choisi au serveur
+
+
+// Lorsqu'un message de chat est reçu, l'afficher avec le nom du joueur
+socket.on('chat message', (data) => {
+  
+});
+
+// Lorsqu'un joueur change son nom
+socket.on('playerNameUpdated', (data) => {
+ 
 });
 
 // Lorsqu'un message est reçu du serveur
-socket.on('chat message', ({ id, message }) => {
-  console.log('Message reçu:', message);
+socket.on('chat message', ({ name, message }) => {
+ 
 
-  // Créer un élément div pour le message
   const msgElement = document.createElement('div');
-  msgElement.textContent = `[${id}] ${message}`;
-
-  // Ajouter le message à la fenêtre de chat
+  msgElement.textContent = `${name}: ${message}`;
+  
   document.getElementById('chat-messages').appendChild(msgElement);
 });
+
 
 // Quand l'utilisateur appuie sur "Entrée" pour envoyer un message
 const chatInput = document.getElementById('chat-input');
