@@ -9,27 +9,38 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 // import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-const socket = io(); // Utilisé pour le jeu et le chat
+const socket = io();
 
-// Ajoute ce code chat ici aussi :
+// Lors de la connexion au serveur
+socket.on('connect', () => {
+  console.log('Connecté au serveur Socket.io avec ID:', socket.id);
+});
+
+// Lorsqu'un message est reçu du serveur
+socket.on('chat message', ({ id, message }) => {
+  console.log('Message reçu:', message);
+
+  // Créer un élément div pour le message
+  const msgElement = document.createElement('div');
+  msgElement.textContent = `[${id}] ${message}`;
+
+  // Ajouter le message à la fenêtre de chat
+  document.getElementById('chat-messages').appendChild(msgElement);
+});
+
+// Quand l'utilisateur appuie sur "Entrée" pour envoyer un message
 const chatInput = document.getElementById('chat-input');
-const chatMessages = document.getElementById('chat-messages');
 
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && chatInput.value.trim() !== '') {
     const message = chatInput.value.trim();
+    
+    // Émettre le message au serveur
     socket.emit('chat message', message);
+    
+    // Effacer le champ de saisie après l'envoi
     chatInput.value = '';
   }
-});
-
-socket.on('chat message', ({ id, message }) => {
-  const msgElement = document.createElement('div');
-  msgElement.textContent = `[${id}] ${message}`;
-  if (id === socket.id) return;
-  
-  chatMessages.appendChild(msgElement);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
 let players = {}; 

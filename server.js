@@ -1,56 +1,51 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketIo(server);
 
-// Définir une politique CSP
-app.use((req, res, next) => {
-    res.setHeader("Content-Security-Policy", 
-        "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io; " +
-        "style-src 'self' 'unsafe-inline' http://localhost:3000; " +
-        "img-src 'self' data:; " +
-        "connect-src 'self' http://localhost:3000 blob:;"
-    );
-    next();
-});
+// Liste des joueurs connectés
+let players = {};
 
-// Servir le favicon
-app.use(express.static('public'));  // Assure-toi que ton favicon.ico se trouve dans un dossier public accessible
-
-const players = {};
-
+// Gestion de la connexion d'un joueur
 io.on('connection', (socket) => {
-    console.log('Un joueur connecté :', socket.id);
+  console.log('Un joueur est connecté :', socket.id);
 
-    // Envoyer tous les joueurs actuels
-    socket.emit('currentPlayers', players);
+  // Créer un joueur et l'ajouter à la liste
+  players[socket.id] = { id: socket.id, position: { x: 0, y: 0, z: 0 }, rotationY: 0 };
 
-    // Ajouter ce joueur
-    players[socket.id] = { x: 0, y: 10, z: 0 };
+  // Envoyer la liste des joueurs actuels à un joueur qui vient de se connecter
+  socket.emit('currentPlayers', players);
 
-    // Informer les autres
-    socket.broadcast.emit('playerMoved', { id: socket.id, playerData: players[socket.id] });
+  // Lorsqu'un joueur se déplace, on met à jour sa position
+  socket.on('playerMoved', (playerData) => {
+    players[socket.id] = { ...players[socket.id], ...playerData };
+    // On envoie la nouvelle position de ce joueur aux autres
+    socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
+  });
 
-    // Mise à jour de position
-    socket.on('playerMoved', (playerData) => {
-        players[socket.id] = playerData;
-        socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
-        
-    });
+  // Lorsqu'un message de chat est envoyé
+  socket.on('chat message', (message) => {
+    console.log('Message reçu:', message); // Pour vérifier que le message arrive
+    // Diffuse le message à tous les autres joueurs
+    io.emit('chat message', { id: socket.id, message: message });
+  });
 
-    // Déconnexion
-    socket.on('disconnect', () => {
-        console.log('Déconnecté :', socket.id);
-        delete players[socket.id];
-        io.emit('playerDisconnected', socket.id);
-    });
+  // Lorsqu'un joueur se déconnecte
+  socket.on('disconnect', () => {
+    console.log('Un joueur s\'est déconnecté :', socket.id);
+    delete players[socket.id];
+    // On informe les autres joueurs de la déconnexion
+    socket.broadcast.emit('playerDisconnected', socket.id);
+  });
 });
+
+// Configurer l'application pour servir des fichiers statiques (par exemple, ton jeu Three.js)
+app.use(express.static('public'));
 
 // Démarrer le serveur
-server.listen(3000, () => {
-    console.log('Serveur Socket.io lancé sur http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
 });
