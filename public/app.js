@@ -468,7 +468,7 @@ loader.load('spawn.glb', (gltf) => {
     worldOctree.fromGraphNode(gltf.scene); 
     
 
- 
+
        
 });
 function teleportPlayerIfOob() {
