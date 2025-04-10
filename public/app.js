@@ -122,7 +122,7 @@ loaderp.load('sky.jpg', (texture) => {
       fillLight1.position.set(0, 0, 0);
       scene.add(fillLight1);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
       directionalLight.position.set(-5, 25, -1);
       directionalLight.castShadow = false;
        scene.add(directionalLight);
@@ -377,68 +377,26 @@ loaderp.load('sky.jpg', (texture) => {
           }
         }
       }
-      function Checkpoint() {
-    for (const checkpoint of checkpoints) {
-        const distance = playerCollider.end.distanceTo(checkpoint);
-        if (distance < 20) { 
-            lastCheckpoint.copy(checkpoint);
-        }
-    }
-}
-
-function JumperCollision() {
-    jumpers.forEach((jumperBox) => {
-        const result = playerCollider.intersectsBox(jumperBox);
-
-        if (result) {
-            playerVelocity.y = 40; 
-        }
-    });
-}
-function JumperCollisionG() {
-    jumpersG.forEach((jumperGBox) => {
-        const result = playerCollider.intersectsBox(jumperGBox);
-
-        if (result) {
-            playerVelocity.y = 100; 
-        }
-    });
-}
 
 const loader = new GLTFLoader();
 
-      let jumpersG = []; 
-      let jumpers = [];
-      let checkpoints = [];
+     
       let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
-loader.load('world.glb', (gltf) => {
+loader.load('spawn.glb', (gltf) => {
     scene.add(gltf.scene);
     gltf.scene.position.set(0, 3, 0);
     gltf.scene.updateMatrixWorld(true);
     worldOctree.fromGraphNode(gltf.scene); 
     
 
-    gltf.scene.traverse((child) => {
-        if (child.isMesh && child.name.includes("Checkpoint")) {
-            checkpoints.push(child.position.clone());
-        }
-        if (child.isMesh && child.name.includes("Jumper")) {
-            const box = new THREE.Box3().setFromObject(child);
-            jumpers.push(box);  
-        }
-        if (child.isMesh && child.name.includes("JumperG")) {            
-            const box = new THREE.Box3().setFromObject(child);
-            jumpersG.push(box);  
-        }
-        
-    });
+ 
        
 });
 function teleportPlayerIfOob() {
     if (camera.position.y <= 1) {
         playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
         playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 1, 0));
-        camera.position.copy(playerCollider.end);
+        camera.position.copy(playerCollider.end)
     }
 }
 
@@ -455,9 +413,7 @@ function teleportPlayerIfOob() {
         controls(deltaTime);
        
         teleportPlayerIfOob();
-        JumperCollision();
-        JumperCollisionG();
-        Checkpoint();     
+            
     }
     renderer.render(scene, camera);
     // stats.end();
