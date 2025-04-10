@@ -4,7 +4,7 @@
     "main": "server.js",
     "dependencies": {
         "express": "^4.21.2",
-        "seedrandom": "^3.0.5",
+        "perlin-noise": "^0.0.1",
         "socket.io": "^4.8.1"
     },
     "scripts": {

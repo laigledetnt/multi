@@ -116,7 +116,6 @@ socket.on('worldData', (worldData) => {
 
 
 
-
 const clock = new THREE.Clock();
      
 const loaderp = new THREE.TextureLoader();
@@ -396,6 +395,68 @@ loaderp.load('sky.jpg', (texture) => {
 
 const loader = new GLTFLoader();
 
+const roomFiles = ['P1.glb', 'P2.glb', 'P3.glb', 'P4.glb'];
+const openExits = []; // stocke { name: "PX2", object: THREE.Object3D }
+
+function addRoomAtExit(exitInfo) {
+  const roomFile = roomFiles[Math.floor(Math.random() * roomFiles.length)];
+
+  loader.load(roomFile, (gltf) => {
+    const room = gltf.scene;
+    room.updateMatrixWorld(true);
+
+    // Cherche une entrée correspondante
+    const entryName = exitInfo.name.replace('2', '1'); // ex: PY2.1 → PY1.1
+    const entrance = room.getObjectByName(entryName);
+
+    if (entrance) {
+      const offset = new THREE.Vector3().subVectors(exitInfo.object.getWorldPosition(new THREE.Vector3()), entrance.getWorldPosition(new THREE.Vector3()));
+      room.position.add(offset);
+      room.updateMatrixWorld(true);
+
+      scene.add(room);
+      worldOctree.fromGraphNode(room);
+
+      // Ajoute toutes les sorties du type P*2, sauf celle déjà connectée
+      room.traverse((child) => {
+        if (child.name.match(/^P[A-Z]+2(\.\d+)?$/)) {
+          if (child.name !== exitInfo.name) {
+            openExits.push({ name: child.name, object: child });
+          }
+        }
+      });
+
+      generateRooms();
+    } else {
+      console.warn(`No matching entrance (${entryName}) found in ${roomFile}`);
+    }
+  });
+}
+
+function generateRooms() {
+  while (openExits.length > 0) {
+    const exit = openExits.shift();
+    addRoomAtExit(exit);
+  }
+}
+
+// Lancer à partir du spawn
+loader.load('spawn.glb', (gltf) => {
+  const spawn = gltf.scene;
+  spawn.position.set(0, 3, 0);
+  spawn.updateMatrixWorld(true);
+  scene.add(spawn);
+  worldOctree.fromGraphNode(spawn);
+
+  // Ajoute toutes les sorties initiales
+  spawn.traverse((child) => {
+    if (child.name.match(/^P[A-Z]+2(\.\d+)?$/)) {
+      openExits.push({ name: child.name, object: child });
+    }
+  });
+
+  generateRooms();
+});
 
 
 

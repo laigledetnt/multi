@@ -1,40 +1,13 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const seedrandom = require('seedrandom');  // Nécessite d'être installé via npm install seedrandom
-
-// Fonction de génération procédurale du monde
-function generateProceduralWorld(seed) {
-  const rng = seedrandom(seed);  // Générateur basé sur le seed
-
-  const worldData = [];
-  
-  // Rotation fixe pour toutes les pièces (par exemple, 0)
-  const fixedRotationY = 0;  // Remplace par la rotation que tu souhaites pour toutes les pièces
-
-  // Exemple de génération avec des coordonnées procédurales mais rotation fixe
-  for (let i = 0; i < 5; i++) {
-    const posX = rng() * 50;  // Valeurs différentes mais consistantes selon le seed
-    const posY = 3;
-    const posZ = rng() * 50;
-
-    worldData.push({
-      piece: `P${i + 1}.glb`,
-      entry: `PX${i + 1}`,
-      exit: i < 4 ? `PX${i + 2}` : null,
-      position: [posX, posY, posZ],
-      rotationY: fixedRotationY  // Rotation fixe pour toutes les pièces
-    });
-  }
-
-  return worldData;
-}
+const { generateMap } = require('./mapGenerator'); // Un module pour générer les cartes à partir des seeds
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Politique CSP
+// Définir une politique CSP
 app.use((req, res, next) => {
     res.setHeader("Content-Security-Policy", 
         "default-src 'self'; " +
@@ -46,51 +19,42 @@ app.use((req, res, next) => {
     next();
 });
 
-// Fichiers statiques
-app.use(express.static('public'));
+// Servir le favicon
+app.use(express.static('public'));  // Assure-toi que ton favicon.ico se trouve dans un dossier public accessible
 
 const players = {};
-let firstPlayerJoined = false;  // Variable pour vérifier si c'est le premier joueur
-
-// Fonction pour générer un seed unique basé sur l'heure
-function generateUniqueSeed() {
-  const currentDate = new Date();
-  const seed = currentDate.getTime().toString();  // Utilise le timestamp actuel comme seed
-  return seed;
-}
-
-// Génération d'un nouveau seed à chaque lancement du serveur
-const sharedSeed = generateUniqueSeed();  // Un seed basé sur l'heure du lancement
-
-console.log(`Le monde sera généré avec le seed : ${sharedSeed}`);
 
 io.on('connection', (socket) => {
-    console.log('Un joueur est connecté :', socket.id);
-  
-    // Génération du monde procédural et envoi aux joueurs
-    const worldData = generateProceduralWorld(sharedSeed);  // Utilisation du seed généré pour le monde
-  
-    // Envoi des données du monde à tous les joueurs (y compris le nouveau joueur)
-    io.emit('worldData', worldData);
-  
-    // Envoi des joueurs existants et autres informations
-    socket.emit('currentPlayers', players);
-    
-    // Lorsque le joueur se déplace, mettez à jour les informations et envoyez-les
+    console.log('Un joueur connecté :', socket.id);
+
+    // Générer une map pour ce joueur basée sur un seed unique
+    const seed = socket.id; // Utiliser l'ID du joueur comme seed, mais tu peux utiliser un autre générateur si tu veux
+    const playerMap = generateMap(seed);
+
+    // Envoyer la map de ce joueur et la liste des joueurs
+    socket.emit('currentPlayers', { players, playerMap });
+
+    // Ajouter ce joueur
+    players[socket.id] = { x: 0, y: 10, z: 0, map: playerMap };
+
+    // Informer les autres
+    socket.broadcast.emit('playerMoved', { id: socket.id, playerData: players[socket.id] });
+
+    // Mise à jour de position
     socket.on('playerMoved', (playerData) => {
-      players[socket.id] = playerData;
-      io.emit('playerMoved', { id: socket.id, playerData });
+        players[socket.id] = playerData;
+        socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
     });
-  
-    // Gérer les déconnexions
+
+    // Déconnexion
     socket.on('disconnect', () => {
-      console.log('Un joueur est déconnecté :', socket.id);
-      delete players[socket.id];
-      io.emit('playerDisconnected', socket.id);
+        console.log('Déconnecté :', socket.id);
+        delete players[socket.id];
+        io.emit('playerDisconnected', socket.id);
     });
 });
 
-// Lancement du serveur
+// Démarrer le serveur
 server.listen(3000, () => {
     console.log('Serveur Socket.io lancé sur http://localhost:3000');
 });
