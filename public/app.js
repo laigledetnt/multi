@@ -52,8 +52,6 @@ function createPlayerModel(id, playerData) {
   });
 }
 
-
-
 function updatePlayerPosition(id, playerData) {
   const playerModel = players[id];
   if (playerModel) {
