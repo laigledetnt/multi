@@ -26,6 +26,8 @@ chatInput.addEventListener('keydown', (e) => {
 socket.on('chat message', ({ id, message }) => {
   const msgElement = document.createElement('div');
   msgElement.textContent = `[${id}] ${message}`;
+  if (id === socket.id) return;
+  
   chatMessages.appendChild(msgElement);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
@@ -34,22 +36,23 @@ let players = {}; // Un seul objet pour gérer tous les modèles des joueurs
 let scene = new THREE.Scene(); // Définir la scène
 
 // Crée un modèle de joueur
-function createPlayerModel(playerId, playerData) {
+function createPlayerModel(id, playerData) {
+  if (id === socket.id) return;
   // Vérifie si le modèle du joueur existe déjà
-  if (players[playerId]) {
-    console.log(`Le joueur ${playerId} existe déjà, pas besoin de le recréer.`);
+  if (players[id]) {
+    console.log(`Le joueur ${id} existe déjà, pas besoin de le recréer.`);
     return; // Ne pas créer le modèle si déjà existant
   }
 
-  console.log(`Création du modèle pour le joueur ${playerId}`);
+  console.log(`Création du modèle pour le joueur ${id}`);
   const loader = new GLTFLoader();
   loader.load('player.glb', (gltf) => {
     const playerModel = gltf.scene;
     playerModel.scale.set(0.5, 0.5, 0.5);  // Ajuster l'échelle
-    playerModel.position.set(playerData.x, playerData.y, playerData.z);
+    playerModel.position.set(playerData.x, playerData.y-1, playerData.z);
     scene.add(playerModel);
-    players[playerId] = playerModel; // Enregistrer le modèle dans players
-    console.log(`Modèle du joueur ${playerId} ajouté à la scène`);
+    players[id] = playerModel; // Enregistrer le modèle dans players
+    console.log(`Modèle du joueur ${id} ajouté à la scène`);
 
     // Ajouter les animations si elles existent
     if (gltf.animations && gltf.animations.length) {
@@ -67,12 +70,10 @@ function createPlayerModel(playerId, playerData) {
 function updatePlayerPosition(id, playerData) {
   const playerModel = players[id];
   if (playerModel) {
-    console.log(`Mise à jour de la position du joueur ${id}`);
-    playerModel.position.set(playerData.x, playerData.y-1, playerData.z);
-    
-    // Mettre à jour la rotation si spécifiée
+  
+    playerModel.position.set(playerData.x, playerData.y - 1, playerData.z);
     if (typeof playerData.rotationY === 'number') {
-      playerModel.rotation.y = +playerData.rotationY + Math.PI; // Ajuster la rotation
+      playerModel.rotation.y = playerData.rotationY + Math.PI;
     }
   }
 }
@@ -98,7 +99,11 @@ function removePlayerModel(playerId) {
 
 
 socket.on('currentPlayers', (existingPlayers) => {
-  console.log('Chargement des joueurs existants');
+console.log('Chargement des joueurs existants');
+
+  for (const id in players) {
+    removePlayerModel(id);
+  }
   for (const playerId in existingPlayers) {
     createPlayerModel(playerId, existingPlayers[playerId]);
   }
@@ -106,6 +111,7 @@ socket.on('currentPlayers', (existingPlayers) => {
 
 socket.on('playerMoved', (data) => {
   const { id, playerData } = data;
+  if (id === socket.id) return;
   console.log(`Mouvement du joueur ${id}`);
   if (players[id]) {
     // Si le joueur existe déjà, on met à jour sa position
@@ -482,9 +488,10 @@ function teleportPlayerIfOob() {
     const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
 
     for (let i = 0; i < STEPS_PER_FRAME; i++) {
+      updateSpheres(deltaTime);
+      updatePlayer(deltaTime);
         controls(deltaTime);
-        updatePlayer(deltaTime);
-        updateSpheres(deltaTime);
+       
         teleportPlayerIfOob();
         JumperCollision();
         JumperCollisionG();

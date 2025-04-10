@@ -24,16 +24,17 @@ app.use(express.static('public'));
 const players = {};
 
 io.on('connection', (socket) => {
+    players[socket.id] = { x: 0, y: 10, z: 0 };
     console.log('Un joueur connecté :', socket.id);
+    
+    
 
-    // Envoi de la liste actuelle des joueurs
+   
     socket.emit('currentPlayers', players);
 
-    // Ajout du joueur
-    players[socket.id] = { x: 0, y: 10, z: 0 };
     socket.broadcast.emit('playerMoved', { id: socket.id, playerData: players[socket.id] });
-
     // Réception d'un mouvement
+
     socket.on('playerMoved', (playerData) => {
         players[socket.id] = playerData;
         socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
