@@ -36,7 +36,7 @@ let players = {};
 let scene = new THREE.Scene(); 
 
 // Crée un modèle de joueur
-function createPlayerModel(id, playerData) {
+function createPlayerModel(id) {
   if (id === socket.id) return;
 
   const loader = new GLTFLoader();
@@ -71,19 +71,15 @@ function removePlayerModel(playerId) {
     playerModel.traverse((child) => {
       if (child.isMesh) {
         child.geometry.dispose(); 
-       
-      }
+        }
     });
     delete players[playerId]; // Retirer le modèle du gestionnaire
-    console.log(`Modèle du joueur ${playerId} supprimé de la scène`);
   }
 }
 
 
 
 socket.on('currentPlayers', (existingPlayers) => {
-console.log('Chargement des joueurs existants');
-
   for (const id in players) {
     removePlayerModel(id);
   }
@@ -95,7 +91,6 @@ console.log('Chargement des joueurs existants');
 socket.on('playerMoved', (data) => {
   const { id, playerData } = data;
   if (id === socket.id) return;
-  console.log(`Mouvement du joueur ${id}`);
   if (players[id]) {
     // Si le joueur existe déjà, on met à jour sa position
     updatePlayerPosition(id, playerData);
