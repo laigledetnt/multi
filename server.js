@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { generateMap } = require('./mapGenerator'); // Un module pour générer les cartes à partir des seeds
 
 const app = express();
 const server = http.createServer(app);
@@ -27,15 +26,11 @@ const players = {};
 io.on('connection', (socket) => {
     console.log('Un joueur connecté :', socket.id);
 
-    // Générer une map pour ce joueur basée sur un seed unique
-    const seed = socket.id; // Utiliser l'ID du joueur comme seed, mais tu peux utiliser un autre générateur si tu veux
-    const playerMap = generateMap(seed);
-
-    // Envoyer la map de ce joueur et la liste des joueurs
-    socket.emit('currentPlayers', { players, playerMap });
+    // Envoyer tous les joueurs actuels
+    socket.emit('currentPlayers', players);
 
     // Ajouter ce joueur
-    players[socket.id] = { x: 0, y: 10, z: 0, map: playerMap };
+    players[socket.id] = { x: 0, y: 10, z: 0 };
 
     // Informer les autres
     socket.broadcast.emit('playerMoved', { id: socket.id, playerData: players[socket.id] });
@@ -44,6 +39,7 @@ io.on('connection', (socket) => {
     socket.on('playerMoved', (playerData) => {
         players[socket.id] = playerData;
         socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
+        
     });
 
     // Déconnexion

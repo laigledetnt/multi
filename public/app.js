@@ -394,7 +394,6 @@ loaderp.load('sky.jpg', (texture) => {
       
 
 const loader = new GLTFLoader();
-
 const roomFiles = ['P1.glb', 'P2.glb', 'P3.glb', 'P4.glb'];
 const openExits = []; // stocke { name: "PX2", object: THREE.Object3D }
 
@@ -438,6 +437,7 @@ function generateRooms() {
     const exit = openExits.shift();
     addRoomAtExit(exit);
   }
+  io.emit('worldData', worldData);
 }
 
 // Lancer à partir du spawn
@@ -457,7 +457,6 @@ loader.load('spawn.glb', (gltf) => {
 
   generateRooms();
 });
-
 
 
      
