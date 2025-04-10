@@ -80,27 +80,42 @@ function removePlayerModel(playerId) {
 
 
 socket.on('currentPlayers', (existingPlayers) => {
-  for (const id in players) {
-    removePlayerModel(id);
-  }
-  for (const playerId in existingPlayers) {
-    createPlayerModel(playerId, existingPlayers[playerId]);
+  // Créer les modèles des joueurs existants
+  for (const id in existingPlayers) {
+    createPlayerModel(id);
+    updatePlayerPosition(id, existingPlayers[id]);
   }
 });
 
 socket.on('playerMoved', (data) => {
   const { id, playerData } = data;
   if (id === socket.id) return;
-  if (players[id]) {
-    updatePlayerPosition(id, playerData);
-  } else {
-    createPlayerModel(id);
+  if (!players[id]) {
+    createPlayerModel(id); // Crée le modèle du joueur si nécessaire
   }
+  updatePlayerPosition(id, playerData);
 });
+
+
 
 socket.on('playerDisconnected', (playerId) => {
   removePlayerModel(playerId);
 });
+socket.on('worldData', (worldData) => {
+  worldData.forEach((roomData) => {
+    loader.load(roomData.piece, (gltf) => {
+      const model = gltf.scene;
+      model.position.fromArray(roomData.position);
+      model.rotation.y = roomData.rotationY;
+      model.updateMatrixWorld(true);
+      scene.add(model);
+      worldOctree.fromGraphNode(model);
+    });
+  });
+});
+
+
+
 
 const clock = new THREE.Clock();
      
@@ -377,8 +392,12 @@ loaderp.load('sky.jpg', (texture) => {
           }
         }
       }
+      
 
 const loader = new GLTFLoader();
+
+
+
 
      
       let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
