@@ -73,7 +73,7 @@ function removePlayerModel(playerId) {
         child.geometry.dispose(); 
         }
     });
-    delete players[playerId]; // Retirer le modèle du gestionnaire
+    delete players[playerId]; 
   }
 }
 
@@ -92,23 +92,17 @@ socket.on('playerMoved', (data) => {
   const { id, playerData } = data;
   if (id === socket.id) return;
   if (players[id]) {
-    // Si le joueur existe déjà, on met à jour sa position
     updatePlayerPosition(id, playerData);
   } else {
-    // Sinon, on crée un modèle pour le joueur
-    createPlayerModel(id, playerData);
+    createPlayerModel(id);
   }
 });
 
 socket.on('playerDisconnected', (playerId) => {
-  console.log(`Joueur déconnecté: ${playerId}`);
-  // Supprimer le modèle du joueur déconnecté
   removePlayerModel(playerId);
 });
 
 const clock = new THREE.Clock();
-
-
      
 const loaderp = new THREE.TextureLoader();
 loaderp.load('sky.jpg', (texture) => {
@@ -128,20 +122,10 @@ loaderp.load('sky.jpg', (texture) => {
       fillLight1.position.set(0, 0, 0);
       scene.add(fillLight1);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
       directionalLight.position.set(-5, 25, -1);
       directionalLight.castShadow = false;
-      directionalLight.shadow.camera.near = 0.01;
-      directionalLight.shadow.camera.far = 500;
-      directionalLight.shadow.camera.right = 30;
-      directionalLight.shadow.camera.left = -30;
-      directionalLight.shadow.camera.top = 30;
-      directionalLight.shadow.camera.bottom = -30;
-      directionalLight.shadow.mapSize.width = 512;
-      directionalLight.shadow.mapSize.height = 512;
-      directionalLight.shadow.radius = 4;
-      directionalLight.shadow.bias = -0.00006;
-      scene.add(directionalLight);
+       scene.add(directionalLight);
       
 
       const container = document.getElementById('container');
