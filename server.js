@@ -1,60 +1,68 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Liste des joueurs connectés
 let players = {};
 
-// Génération procédurale du monde (appelée une seule fois au lancement)
-function generateProceduralWorld() {
-  const rooms = [];
+// Middleware pour parser du JSON (utile pour l'éditeur)
+app.use(express.json());
 
-  // Room de départ
-  rooms.push({
-    piece: 'spawn.glb',
-    position: [0, 3, 0],
-    rotationY: 0,
-    connectedTo: ['PX2']
-  });
-
-  // Exemple de 2 pièces connectées
-  rooms.push({
-    piece: 'P1.glb',
-    position: [10, 3, 0],
-    rotationY: 0,
-    connectedTo: ['PX2']
-  });
-
-  rooms.push({
-    piece: 'P4.glb',
-    position: [20, 3, 0],
-    rotationY: Math.PI,
-    connectedTo: []
-  });
-
-  return rooms;
+// Fonction pour charger la grille depuis un fichier JSON
+function loadMap() {
+  const mapPath = path.join(__dirname, 'map.json');
+  if (fs.existsSync(mapPath)) {
+    return JSON.parse(fs.readFileSync(mapPath, 'utf8'));
+  } 
 }
 
-// Le monde généré (sera envoyé à tous les clients)
-const worldData = generateProceduralWorld();
+// Génère les blocs 3D depuis une grille
+function generateWorldFromGrid(grid) {
+  const blocks = [];
 
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
+      const type = grid[y][x];
+      if (type !== ' ') {
+        blocks.push({
+          type,
+          position: [x * 2, 0, y * 2] // Chaque bloc fait 2x2
+        });
+      }
+    }
+  }
+
+  return blocks;
+}
+
+// Charge la grille (peut venir de map.json)
+const worldData = generateWorldFromGrid(loadMap());
+
+// API pour sauvegarder depuis l’éditeur
+app.post('/save-map', (req, res) => {
+  const { map } = req.body;
+  fs.writeFileSync(path.join(__dirname, 'map.json'), JSON.stringify(map, null, 2));
+  res.sendStatus(200);
+});
+
+// Socket.io
 io.on('connection', (socket) => {
   console.log('Un joueur est connecté :', socket.id);
 
-  players[socket.id] = { 
-    id: socket.id, 
+  players[socket.id] = {
+    id: socket.id,
     name: 'Joueur ' + socket.id,
-    position: { x: 0, y: 0, z: 0 }, 
-    rotationY: 0 
+    position: { x: 0, y: 0, z: 0 },
+    rotationY: 0
   };
 
-  // Envoyer le monde généré au nouveau joueur
+  // Envoie la map + joueurs
   socket.emit('worldData', worldData);
-
   socket.emit('currentPlayers', players);
 
   socket.on('setPlayerName', (name) => {
@@ -81,6 +89,7 @@ io.on('connection', (socket) => {
   });
 });
 
+// Sert les fichiers statiques (client, éditeur, etc.)
 app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;

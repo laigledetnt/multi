@@ -79,7 +79,7 @@ function updatePlayerPosition(id, playerData) {
   const playerModel = players[id];
   if (playerModel) {
   
-    playerModel.position.set(playerData.x, playerData.y - 1, playerData.z);
+    playerModel.position.set(playerData.x, playerData.y - 2.5, playerData.z);
     if (typeof playerData.rotationY === 'number') {
       playerModel.rotation.y = playerData.rotationY + Math.PI;
     }
@@ -124,18 +124,41 @@ socket.on('playerMoved', (data) => {
 socket.on('playerDisconnected', (playerId) => {
   removePlayerModel(playerId);
 });
-socket.on('worldData', (worldData) => {
-  worldData.forEach((roomData) => {
-    loader.load(roomData.piece, (gltf) => {
-      const model = gltf.scene;
-      model.position.fromArray(roomData.position);
-      model.rotation.y = roomData.rotationY;
-      model.updateMatrixWorld(true);
-      scene.add(model);
-      worldOctree.fromGraphNode(model);
-    });
+socket.on('worldData', (blocks) => {
+  blocks.forEach(({ type, position }) => {
+    const [x, y, z] = position;
+    const spaceFactor = 4;  // Facteur d'espacement
+
+    if (type === '#') {
+      const wall = new THREE.Mesh(
+        new THREE.BoxGeometry(8, 14, 8),
+        new THREE.MeshStandardMaterial({ color: 0x444444 })
+      );
+      wall.position.set(x * spaceFactor, y, z * spaceFactor); // Multiplier les coordonnées par un facteur pour espacer les murs
+      scene.add(wall);
+      worldOctree.fromGraphNode(wall);
+    }
+
+    // Sol pour toutes les cases
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 0.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x888888 })
+    );
+    floor.position.set(x * spaceFactor, -1, z * spaceFactor);  // Ajouter un espace similaire pour le sol
+    scene.add(floor);
+    worldOctree.fromGraphNode(floor);
+
+    if (type === 'P') {
+      lastCheckpoint = new THREE.Vector3(x * spaceFactor, y, z * spaceFactor);
+    }
   });
+
+  // Appliquer la position de spawn du joueur
+  playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
+  playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 2.5, 0));
+  camera.position.copy(playerCollider.end);
 });
+
 
 
 
@@ -418,20 +441,7 @@ loaderp.load('sky.jpg', (texture) => {
 
 const loader = new GLTFLoader();
 
-socket.on('availableModels', (models) => {
-  models.forEach((modelName) => {
-    
-    
-    loader.load(`/models/${modelName}`, (gltf) => {
-      const model = gltf.scene;
-      scene.add(model);
-      
-      // Positionner le modèle à un endroit spécifique (ici, un exemple)
-      model.position.set(Math.random() * 10, 0, Math.random() * 10);
-      worldOctree.fromGraphNode(model);
-    });
-  });
-});
+
 
 
  let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
@@ -439,7 +449,7 @@ socket.on('availableModels', (models) => {
 function teleportPlayerIfOob() {
     if (camera.position.y <= 1) {
         playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
-        playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 1, 0));
+        playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 2.5, 0));
         camera.position.copy(playerCollider.end)
     }
 }
