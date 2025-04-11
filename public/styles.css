@@ -1,8 +1,6 @@
 body {
     margin: 0;font-family: Monospace;font-size: 1;line-height: 1;overscroll-behavior: none;
   }
-  
-  
   #name-entry-container {
     position: absolute;
     top: 40%;

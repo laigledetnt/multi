@@ -11,17 +11,13 @@ import { Capsule } from 'three/addons/math/Capsule.js';
 
 const socket = io();
 
-// Lors de la connexion au serveur
 socket.on('connect', () => {
- // Attendre que l'utilisateur saisisse son nom
 const nameEntryContainer = document.getElementById('name-entry-container');
 const playerNameInput = document.getElementById('player-name');
 const submitNameButton = document.getElementById('submit-name');
 
-// Afficher le formulaire de saisie
 nameEntryContainer.style.display = 'block';
 
-// Lorsque le joueur appuie sur le bouton de validation
 submitNameButton.addEventListener('click', () => {
   const playerName = playerNameInput.value.trim();
   
@@ -41,23 +37,6 @@ playerNameInput.addEventListener('keydown', (e) => {
 
 });
 
-
-// Demander au joueur de saisir son nom
-
-
-// Envoyer le nom choisi au serveur
-
-
-// Lorsqu'un message de chat est reçu, l'afficher avec le nom du joueur
-socket.on('chat message', (data) => {
-  
-});
-
-// Lorsqu'un joueur change son nom
-socket.on('playerNameUpdated', (data) => {
- 
-});
-
 // Lorsqu'un message est reçu du serveur
 socket.on('chat message', ({ name, message }) => {
  
@@ -69,17 +48,13 @@ socket.on('chat message', ({ name, message }) => {
 });
 
 
-// Quand l'utilisateur appuie sur "Entrée" pour envoyer un message
+
 const chatInput = document.getElementById('chat-input');
 
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && chatInput.value.trim() !== '') {
     const message = chatInput.value.trim();
-    
-    // Émettre le message au serveur
     socket.emit('chat message', message);
-    
-    // Effacer le champ de saisie après l'envoi
     chatInput.value = '';
   }
 });
@@ -87,17 +62,13 @@ chatInput.addEventListener('keydown', (e) => {
 let players = {}; 
 let scene = new THREE.Scene(); 
 
-// Crée un modèle de joueur
 function createPlayerModel(id) {
   if (id === socket.id) return;
 
   const loader = new GLTFLoader();
   loader.load('player.glb', (gltf) => {
-
     const playerModel = gltf.scene;
-
     playerModel.scale.set(0.5, 0.5, 0.5);  
-    
    playerModel.userData.initialPosition = playerModel.position.clone();
     scene.add(playerModel);
     players[id] = playerModel;
@@ -446,83 +417,25 @@ loaderp.load('sky.jpg', (texture) => {
       
 
 const loader = new GLTFLoader();
-const roomFiles = ['P1.glb', 'P2.glb', 'P3.glb', 'P4.glb'];
-const openExits = []; // stocke { name: "PX2", object: THREE.Object3D }
 
-function addRoomAtExit(exitInfo) {
-  const roomFile = roomFiles[Math.floor(Math.random() * roomFiles.length)];
-
-  loader.load(roomFile, (gltf) => {
-    const room = gltf.scene;
-    room.updateMatrixWorld(true);
-
-    // Cherche une entrée correspondante
-    const entryName = exitInfo.name.replace('2', '1'); // ex: PY2.1 → PY1.1
-    const entrance = room.getObjectByName(entryName);
-
-    if (entrance) {
-      const offset = new THREE.Vector3().subVectors(exitInfo.object.getWorldPosition(new THREE.Vector3()), entrance.getWorldPosition(new THREE.Vector3()));
-      room.position.add(offset);
-      room.updateMatrixWorld(true);
-
-      scene.add(room);
-      worldOctree.fromGraphNode(room);
-
-      // Ajoute toutes les sorties du type P*2, sauf celle déjà connectée
-      room.traverse((child) => {
-        if (child.name.match(/^P[A-Z]+2(\.\d+)?$/)) {
-          if (child.name !== exitInfo.name) {
-            openExits.push({ name: child.name, object: child });
-          }
-        }
-      });
-
-      generateRooms();
-    } else {
-      console.warn(`No matching entrance (${entryName}) found in ${roomFile}`);
-    }
-  });
-}
-
-function generateRooms() {
-  while (openExits.length > 0) {
-    const exit = openExits.shift();
-    addRoomAtExit(exit);
-  }
-  io.emit('worldData', worldData);
-}
-
-// Lancer à partir du spawn
-loader.load('spawn.glb', (gltf) => {
-  const spawn = gltf.scene;
-  spawn.position.set(0, 3, 0);
-  spawn.updateMatrixWorld(true);
-  scene.add(spawn);
-  worldOctree.fromGraphNode(spawn);
-
-  // Ajoute toutes les sorties initiales
-  spawn.traverse((child) => {
-    if (child.name.match(/^P[A-Z]+2(\.\d+)?$/)) {
-      openExits.push({ name: child.name, object: child });
-    }
-  });
-
-  generateRooms();
-});
-
-
-     
-      let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
-loader.load('spawn.glb', (gltf) => {
-    scene.add(gltf.scene);
-    gltf.scene.position.set(0, 3, 0);
-    gltf.scene.updateMatrixWorld(true);
-    worldOctree.fromGraphNode(gltf.scene); 
+socket.on('availableModels', (models) => {
+  models.forEach((modelName) => {
     
-
-
-       
+    
+    loader.load(`/models/${modelName}`, (gltf) => {
+      const model = gltf.scene;
+      scene.add(model);
+      
+      // Positionner le modèle à un endroit spécifique (ici, un exemple)
+      model.position.set(Math.random() * 10, 0, Math.random() * 10);
+      worldOctree.fromGraphNode(model);
+    });
+  });
 });
+
+
+ let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
+
 function teleportPlayerIfOob() {
     if (camera.position.y <= 1) {
         playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
