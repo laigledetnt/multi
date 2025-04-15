@@ -62,24 +62,13 @@ chatInput.addEventListener('keydown', (e) => {
 let players = {}; 
 let scene = new THREE.Scene(); 
 
-function createPlayerModel(id) {
-  if (id === socket.id) return;
 
-  const loader = new GLTFLoader();
-  loader.load('player.glb', (gltf) => {
-    const playerModel = gltf.scene;
-    playerModel.scale.set(0.5, 0.5, 0.5);  
-   playerModel.userData.initialPosition = playerModel.position.clone();
-    scene.add(playerModel);
-    players[id] = playerModel;
-  });
-}
 
 function updatePlayerPosition(id, playerData) {
   const playerModel = players[id];
   if (playerModel) {
   
-    playerModel.position.set(playerData.x, playerData.y - 2.5, playerData.z);
+    playerModel.position.set(playerData.x, playerData.y -1, playerData.z);
     if (typeof playerData.rotationY === 'number') {
       playerModel.rotation.y = playerData.rotationY + Math.PI;
     }
@@ -123,40 +112,6 @@ socket.on('playerMoved', (data) => {
 
 socket.on('playerDisconnected', (playerId) => {
   removePlayerModel(playerId);
-});
-socket.on('worldData', (blocks) => {
-  blocks.forEach(({ type, position }) => {
-    const [x, y, z] = position;
-    const spaceFactor = 4;  // Facteur d'espacement
-
-    if (type === '#') {
-      const wall = new THREE.Mesh(
-        new THREE.BoxGeometry(8, 14, 8),
-        new THREE.MeshStandardMaterial({ color: 0x444444 })
-      );
-      wall.position.set(x * spaceFactor, y, z * spaceFactor); // Multiplier les coordonnées par un facteur pour espacer les murs
-      scene.add(wall);
-      worldOctree.fromGraphNode(wall);
-    }
-
-    // Sol pour toutes les cases
-    const floor = new THREE.Mesh(
-      new THREE.BoxGeometry(8, 0.2, 8),
-      new THREE.MeshStandardMaterial({ color: 0x888888 })
-    );
-    floor.position.set(x * spaceFactor, -1, z * spaceFactor);  // Ajouter un espace similaire pour le sol
-    scene.add(floor);
-    worldOctree.fromGraphNode(floor);
-
-    if (type === 'P') {
-      lastCheckpoint = new THREE.Vector3(x * spaceFactor, y, z * spaceFactor);
-    }
-  });
-
-  // Appliquer la position de spawn du joueur
-  playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
-  playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 2.5, 0));
-  camera.position.copy(playerCollider.end);
 });
 
 
@@ -211,7 +166,10 @@ loaderp.load('sky.jpg', (texture) => {
 
       const sphereGeometry = new THREE.IcosahedronGeometry(SPHERE_RADIUS, 5);
       const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0xdede8d });
-      
+
+      const enemyDirection = new THREE.Vector3(1, 0, 0); 
+      const enemySpeed = 2; 
+
 
       const spheres = [];
       let sphereIdx = 0;
@@ -417,7 +375,7 @@ loaderp.load('sky.jpg', (texture) => {
 
       function controls(deltaTime) {
         
-        const speedDelta = deltaTime * (playerOnFloor ? 30 : 8);
+        const speedDelta = deltaTime * (playerOnFloor ? 17 : 2);
 
         if (keyStates['KeyW']) {
           playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
@@ -433,13 +391,93 @@ loaderp.load('sky.jpg', (texture) => {
         }
         if (playerOnFloor) {
           if (keyStates['Space']) {
-            playerVelocity.y = 17;
+            playerVelocity.y = 10;
           }
         }
       }
       
 
 const loader = new GLTFLoader();
+
+loader.load('spawn.glb', (gltf) => {
+  scene.add(gltf.scene);
+  gltf.scene.position.set(0, 7, 0);
+  gltf.scene.updateMatrixWorld(true);
+  worldOctree.fromGraphNode(gltf.scene); 
+});
+
+
+
+function createPlayerModel(id) {
+  if (id === socket.id) return;
+
+  const loader = new GLTFLoader();
+  loader.load('player.glb', (gltf) => {
+    const playerModel = gltf.scene;
+    playerModel.scale.set(0.2, 0.2, 0.2);  
+   playerModel.userData.initialPosition = playerModel.position.clone();
+    scene.add(playerModel);
+    players[id] = playerModel;
+  });
+}
+
+function updateEnemyCollisions(enemy) {
+  const result = worldOctree.capsuleIntersect(enemy.collider);
+  if (result) {
+    if (result.depth >= 1e-5) {
+      enemy.collider.translate(result.normal.multiplyScalar(result.depth));
+    }
+
+    enemy.velocity.addScaledVector(result.normal, -result.normal.dot(enemy.velocity));
+  }
+
+  // Met à jour la position visuelle
+  enemy.mesh.position.copy(enemy.collider.end).add(new THREE.Vector3(0, -0.5, 0));
+}
+
+
+
+let enemies = {}; // Stocke les ennemis par leur ID
+
+socket.on('enemiesMoved', (data) => {
+  data.forEach(enemyData => {
+    let enemyObj = enemies[enemyData.id];
+
+    // Si l'ennemi n'existe pas encore
+    if (!enemyObj) {
+      const loader = new GLTFLoader();
+      loader.load('enemy.glb', (gltf) => {
+        const enemy = gltf.scene;
+        enemy.scale.set(0.5, 0.5, 0.5);
+        scene.add(enemy);
+
+        enemies[enemyData.id] = {
+          mesh: enemy,
+          collider: new Capsule(
+            new THREE.Vector3(enemyData.position.x, enemyData.position.y + 5.8, enemyData.position.z),
+            new THREE.Vector3(enemyData.position.x, enemyData.position.y + 6.8, enemyData.position.z),
+            0.3
+          ),
+          velocity: new THREE.Vector3(),
+        };
+      });
+    } else {
+      // Si l'ennemi existe déjà, mettre à jour sa position
+      const enemy = enemyObj.mesh;
+      if (enemy) {
+        enemy.position.set(enemyData.position.x, enemyData.position.y + 5.8, enemyData.position.z);
+        enemy.rotation.y = enemyData.rotationY || 0;
+
+        // Mets aussi à jour le collider
+        enemyObj.collider.start.set(enemyData.position.x, enemyData.position.y + 5.8, enemyData.position.z);
+        enemyObj.collider.end.set(enemyData.position.x, enemyData.position.y + 8, enemyData.position.z);
+      }
+    }
+  });
+});
+
+
+
 
 
 
@@ -449,7 +487,7 @@ const loader = new GLTFLoader();
 function teleportPlayerIfOob() {
     if (camera.position.y <= 1) {
         playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
-        playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 2.5, 0));
+        playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 1, 0));
         camera.position.copy(playerCollider.end)
     }
 }
@@ -465,6 +503,12 @@ function teleportPlayerIfOob() {
       updateSpheres(deltaTime);
       updatePlayer(deltaTime);
         controls(deltaTime);
+      
+        Object.values(enemies).forEach(enemy => {
+          if (enemy.collider) {
+            updateEnemyCollisions(enemy);
+          }
+        });
        
         teleportPlayerIfOob();
             

@@ -10,45 +10,55 @@ const io = socketIo(server);
 
 let players = {};
 
-// Middleware pour parser du JSON (utile pour l'éditeur)
-app.use(express.json());
+// Créer plusieurs ennemis
+let enemies = [
+  { id: 'enemy1', position: { x: 0, y: 0, z: 0 }, rotationY: 0, direction: { x: 1, y: 0, z: 0 } },
+  { id: 'enemy3', position: { x: -50, y: 0, z: -50 }, rotationY: 0, direction: { x: 1, y: 0, z: 0 } }
+];
 
-// Fonction pour charger la grille depuis un fichier JSON
-function loadMap() {
-  const mapPath = path.join(__dirname, 'map.json');
-  if (fs.existsSync(mapPath)) {
-    return JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-  } 
-}
+setInterval(() => {
+  const playerIds = Object.keys(players);
+  if (playerIds.length === 0) return;
 
-// Génère les blocs 3D depuis une grille
-function generateWorldFromGrid(grid) {
-  const blocks = [];
+  // Boucle à travers chaque ennemi
+  enemies.forEach(enemy => {
+    let closestPlayer = null;
+    let closestDistance = Infinity;
 
-  for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
-      const type = grid[y][x];
-      if (type !== ' ') {
-        blocks.push({
-          type,
-          position: [x * 2, 0, y * 2] // Chaque bloc fait 2x2
-        });
+    // Recherche du joueur le plus proche
+    playerIds.forEach(playerId => {
+      const player = players[playerId];
+      const dx = player.position.x - enemy.position.x;
+      const dz = player.position.z - enemy.position.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestPlayer = player;
+      }
+    });
+
+    if (closestPlayer) {
+      // Calcul de la direction vers le joueur le plus proche
+      const dx = closestPlayer.position.x - enemy.position.x;
+      const dz = closestPlayer.position.z - enemy.position.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+
+      const speed = 0.05;
+      if (distance > 0.5) {
+        // Mise à jour de la direction et déplacement de l'ennemi
+        enemy.direction.x = dx / distance;
+        enemy.direction.z = dz / distance;
+        enemy.position.x += enemy.direction.x * speed;
+        enemy.position.z += enemy.direction.z * speed;
+        enemy.rotationY = Math.atan2(dx, dz); // Mise à jour de la rotation
       }
     }
-  }
+  });
 
-  return blocks;
-}
-
-// Charge la grille (peut venir de map.json)
-const worldData = generateWorldFromGrid(loadMap());
-
-// API pour sauvegarder depuis l’éditeur
-app.post('/save-map', (req, res) => {
-  const { map } = req.body;
-  fs.writeFileSync(path.join(__dirname, 'map.json'), JSON.stringify(map, null, 2));
-  res.sendStatus(200);
-});
+  // Envoi de la position de tous les ennemis aux clients
+  io.emit('enemiesMoved', enemies);
+}, 50);
 
 // Socket.io
 io.on('connection', (socket) => {
@@ -61,8 +71,9 @@ io.on('connection', (socket) => {
     rotationY: 0
   };
 
-  // Envoie la map + joueurs
-  socket.emit('worldData', worldData);
+  // Envoie les ennemis au nouveau joueur
+  socket.emit('enemiesData', enemies);
+
   socket.emit('currentPlayers', players);
 
   socket.on('setPlayerName', (name) => {
@@ -74,7 +85,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('playerMoved', (playerData) => {
-    players[socket.id] = { ...players[socket.id], ...playerData };
+    players[socket.id].position = {
+      x: playerData.x,
+      y: playerData.y,
+      z: playerData.z
+    };
+    players[socket.id].rotationY = playerData.rotationY;
+
     socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
   });
 
