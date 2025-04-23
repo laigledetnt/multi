@@ -455,9 +455,9 @@ socket.on('enemiesMoved', (data) => {
           mesh: enemy,
 
           collider: new Capsule (
-            new THREE.Vector3(enemyData.position.x, enemyData.position.y + 6.8, enemyData.position.z),
             new THREE.Vector3(enemyData.position.x, enemyData.position.y , enemyData.position.z),
-              0.3
+            new THREE.Vector3(enemyData.position.x, enemyData.position.y , enemyData.position.z),
+            0
 
           ),
           velocity: new THREE.Vector3(),
@@ -472,7 +472,7 @@ socket.on('enemiesMoved', (data) => {
 
         // Mets aussi à jour le collider
         enemyObj.collider.start.set(enemyData.position.x, enemyData.position.y + 5.8, enemyData.position.z);
-        enemyObj.collider.end.set(enemyData.position.x, enemyData.position.y + 8, enemyData.position.z);
+        enemyObj.collider.end.set(enemyData.position.x, enemyData.position.y + 6.5, enemyData.position.z);
       }
     }
   });
