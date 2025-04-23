@@ -454,9 +454,8 @@ socket.on('enemiesMoved', (data) => {
         enemies[enemyData.id] = {
           mesh: enemy,
           collider: new Capsule (
-            new THREE.Vector3(enemyData.position.x, enemyData.position.y + 6.8, enemyData.position.z),
+            new THREE.Vector3(enemyData.position.x, enemyData.position.y + 6.8, enemyData.position.z)
             
-            new THREE.Vector3(enemyData.position.x, enemyData.position.y + 6.8, enemyData.position.z),
               0.3
           ),
           velocity: new THREE.Vector3(),
