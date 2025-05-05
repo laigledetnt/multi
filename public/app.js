@@ -426,7 +426,7 @@ loaderp.load('sky.jpg', (texture) => {
         for (const { box, target } of teleporters) {
             if (playerCollider.intersectsBox(box)) {
                 playerCollider.start.copy(target).add(new THREE.Vector3(0, 0.35, 0));
-                playerCollider.end.copy(target).add(new THREE.Vector3(0, 0, 0));
+                playerCollider.end.copy(target).add(new THREE.Vector3(0, 3, 0));
                 camera.position.copy(playerCollider.end);
                 break; 
             }
