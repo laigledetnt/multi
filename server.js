@@ -10,55 +10,6 @@ const io = socketIo(server);
 
 let players = {};
 
-// Créer plusieurs ennemis
-let enemies = [
-  { id: 'enemy1', position: { x: 0, y: 0, z: 0 }, rotationY: 0, direction: { x: 1, y: 0, z: 0 } },
-  { id: 'enemy3', position: { x: -50, y: 0, z: -50 }, rotationY: 0, direction: { x: 1, y: 0, z: 0 } }
-];
-
-setInterval(() => {
-  const playerIds = Object.keys(players);
-  if (playerIds.length === 0) return;
-
-  // Boucle à travers chaque ennemi
-  enemies.forEach(enemy => {
-    let closestPlayer = null;
-    let closestDistance = Infinity;
-
-    // Recherche du joueur le plus proche
-    playerIds.forEach(playerId => {
-      const player = players[playerId];
-      const dx = player.position.x - enemy.position.x;
-      const dz = player.position.z - enemy.position.z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestPlayer = player;
-      }
-    });
-
-    if (closestPlayer) {
-      // Calcul de la direction vers le joueur le plus proche
-      const dx = closestPlayer.position.x - enemy.position.x;
-      const dz = closestPlayer.position.z - enemy.position.z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-
-      const speed = 0.05;
-      if (distance > 0.5) {
-        // Mise à jour de la direction et déplacement de l'ennemi
-        enemy.direction.x = dx / distance;
-        enemy.direction.z = dz / distance;
-        enemy.position.x += enemy.direction.x * speed;
-        enemy.position.z += enemy.direction.z * speed;
-        enemy.rotationY = Math.atan2(dx, dz); // Mise à jour de la rotation
-      }
-    }
-  });
-
-  // Envoi de la position de tous les ennemis aux clients
-  io.emit('enemiesMoved', enemies);
-}, 50);
 
 // Socket.io
 io.on('connection', (socket) => {
@@ -71,9 +22,7 @@ io.on('connection', (socket) => {
     rotationY: 0
   };
 
-  // Envoie les ennemis au nouveau joueur
-  socket.emit('enemiesData', enemies);
-
+  
   socket.emit('currentPlayers', players);
 
   socket.on('setPlayerName', (name) => {

@@ -68,7 +68,7 @@ function updatePlayerPosition(id, playerData) {
   const playerModel = players[id];
   if (playerModel) {
   
-    playerModel.position.set(playerData.x, playerData.y -1, playerData.z);
+    playerModel.position.set(playerData.x, playerData.y -2.8, playerData.z);
     if (typeof playerData.rotationY === 'number') {
       playerModel.rotation.y = playerData.rotationY + Math.PI;
     }
@@ -118,7 +118,7 @@ socket.on('playerDisconnected', (playerId) => {
 
 
 const clock = new THREE.Clock();
-     
+
 const loaderp = new THREE.TextureLoader();
 loaderp.load('sky.jpg', (texture) => {
   const skyGeometry = new THREE.SphereGeometry(500, 30, 30);
@@ -127,7 +127,7 @@ loaderp.load('sky.jpg', (texture) => {
     map: texture,
     toneMapped: false
   });
-  const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+  sky = new THREE.Mesh(skyGeometry, skyMaterial);
   scene.add(sky);
 });
       const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -157,7 +157,7 @@ loaderp.load('sky.jpg', (texture) => {
       
      
 
-      const GRAVITY = 25;
+      const GRAVITY = 40;
 
       const NUM_SPHERES = 1;
       const SPHERE_RADIUS = 0.2;
@@ -167,8 +167,7 @@ loaderp.load('sky.jpg', (texture) => {
       const sphereGeometry = new THREE.IcosahedronGeometry(SPHERE_RADIUS, 5);
       const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0xdede8d });
 
-      const enemyDirection = new THREE.Vector3(1, 0, 0); 
-      const enemySpeed = 2; 
+     
 
 
       const spheres = [];
@@ -255,7 +254,7 @@ loaderp.load('sky.jpg', (texture) => {
       }
 
       function updatePlayer(deltaTime) {
-        let damping = -0.07; 
+        let damping = -0.08; 
 
 
 
@@ -266,7 +265,7 @@ loaderp.load('sky.jpg', (texture) => {
     playerVelocity.z *= (1 - friction);
   } else {
     playerVelocity.y -= GRAVITY * deltaTime;
-    damping *= 0.1; 
+    damping *= 0.2; 
   }
   playerVelocity.addScaledVector(playerVelocity, damping);
 
@@ -375,7 +374,7 @@ loaderp.load('sky.jpg', (texture) => {
 
       function controls(deltaTime) {
         
-        const speedDelta = deltaTime * (playerOnFloor ? 17 : 2);
+        const speedDelta = deltaTime * (playerOnFloor ? 20: 15);
 
         if (keyStates['KeyW']) {
           playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
@@ -391,19 +390,92 @@ loaderp.load('sky.jpg', (texture) => {
         }
         if (playerOnFloor) {
           if (keyStates['Space']) {
-            playerVelocity.y = 10;
+            playerVelocity.y = 23;
           }
         }
       }
       
+      function Checkpoint() {
+        for (const checkpoint of checkpoints) {
+            const distance = playerCollider.end.distanceTo(checkpoint);
+            if (distance < 20) { 
+                lastCheckpoint.copy(checkpoint);
+            }
+        }
+    }
+    
+    function JumperCollision() {
+        jumpers.forEach((jumperBox) => {
+            const result = playerCollider.intersectsBox(jumperBox);
+    
+            if (result) {
+                playerVelocity.y = 40; 
+            }
+        });
+    }
+    function JumperCollisionG() {
+        jumpersG.forEach((jumperGBox) => {
+            const result = playerCollider.intersectsBox(jumperGBox);
+    
+            if (result) {
+                playerVelocity.y = 100; 
+            }
+        });
+    }
+    function TeleporterCollision() {
+        for (const { box, target } of teleporters) {
+            if (playerCollider.intersectsBox(box)) {
+                playerCollider.start.copy(target).add(new THREE.Vector3(0, 0.35, 0));
+                playerCollider.end.copy(target).add(new THREE.Vector3(0, 0, 0));
+                camera.position.copy(playerCollider.end);
+                break; 
+            }
+        }
+    }
+    
+    const loader = new GLTFLoader();
+          let jumpersG = []; 
+          let jumpers = [];
+          let checkpoints = [];
+          let teleporters = [];
+          let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
 
-const loader = new GLTFLoader();
-
-loader.load('spawn.glb', (gltf) => {
+loader.load('world.glb', (gltf) => {
   scene.add(gltf.scene);
-  gltf.scene.position.set(0, 7, 0);
+  gltf.scene.position.set(0, 2, 0);
   gltf.scene.updateMatrixWorld(true);
   worldOctree.fromGraphNode(gltf.scene); 
+
+  gltf.scene.traverse((child) => {
+      if (child.isMesh && child.name.includes("Checkpoint")) {
+          checkpoints.push(child.position.clone());
+      }
+      if (child.isMesh && child.name.includes("Jumper")) {
+          const box = new THREE.Box3().setFromObject(child);
+          jumpers.push(box);  
+      }
+      if (child.isMesh && child.name.includes("JumperG")) {            
+          const box = new THREE.Box3().setFromObject(child);
+          jumpersG.push(box);  
+      }
+      if (child.isMesh && child.name.startsWith("TeleporterTo_")) {
+  const parts = child.name.split("_");
+  if (parts.length === 4) {
+      const toNumber = (str) => parseFloat(str.replace("m", "-"));
+
+      const x = toNumber(parts[1]);
+      const y = toNumber(parts[2]);
+      const z = toNumber(parts[3]);
+
+      const box = new THREE.Box3().setFromObject(child);
+      const target = new THREE.Vector3(x, y, z);
+
+      teleporters.push({ box, target });
+  }
+}
+      
+  });
+     
 });
 
 
@@ -414,82 +486,21 @@ function createPlayerModel(id) {
   const loader = new GLTFLoader();
   loader.load('player.glb', (gltf) => {
     const playerModel = gltf.scene;
-    playerModel.scale.set(0.2, 0.2, 0.2);  
+    playerModel.scale.set(0.8, 0.8, 0.8);  
    playerModel.userData.initialPosition = playerModel.position.clone();
     scene.add(playerModel);
     players[id] = playerModel;
   });
 }
 
-function updateEnemyCollisions(enemy) {
-  const result = worldOctree.capsuleIntersect(enemy.collider);
-  if (result) {
-    if (result.depth >= 1e-5) {
-      enemy.collider.translate(result.normal.multiplyScalar(result.depth));
-    }
-
-    enemy.velocity.addScaledVector(result.normal, -result.normal.dot(enemy.velocity));
-  }
-
-  // Met à jour la position visuelle
-  enemy.mesh.position.copy(enemy.collider.end).add(new THREE.Vector3(0, -0.5, 0));
-}
 
 
 
-let enemies = {}; // Stocke les ennemis par leur ID
-
-socket.on('enemiesMoved', (data) => {
-  data.forEach(enemyData => {
-    let enemyObj = enemies[enemyData.id];
-
-    // Si l'ennemi n'existe pas encore
-    if (!enemyObj) {
-      const loader = new GLTFLoader();
-      loader.load('enemy.glb', (gltf) => {
-        const enemy = gltf.scene;
-        enemy.scale.set(0.5, 0.5, 0.5);
-        scene.add(enemy);
-
-        enemies[enemyData.id] = {
-          mesh: enemy,
-
-          collider: new Capsule (
-            new THREE.Vector3(enemyData.position.x, enemyData.position.y , enemyData.position.z),
-            new THREE.Vector3(enemyData.position.x, enemyData.position.y , enemyData.position.z),
-            0
-
-          ),
-          velocity: new THREE.Vector3(),
-        };
-      });
-    } else {
-      // Si l'ennemi existe déjà, mettre à jour sa position
-      const enemy = enemyObj.mesh;
-      if (enemy) {
-        enemy.position.set(enemyData.position.x, enemyData.position.y + 5.8, enemyData.position.z);
-        enemy.rotation.y = enemyData.rotationY || 0;
-
-        // Mets aussi à jour le collider
-        enemyObj.collider.start.set(enemyData.position.x, enemyData.position.y + 5.8, enemyData.position.z);
-        enemyObj.collider.end.set(enemyData.position.x, enemyData.position.y + 6.5, enemyData.position.z);
-      }
-    }
-  });
-});
-
-
-
-
-
-
-
- let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
 
 function teleportPlayerIfOob() {
     if (camera.position.y <= 1) {
         playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
-        playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 1, 0));
+        playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 3, 0));
         camera.position.copy(playerCollider.end)
     }
 }
@@ -497,26 +508,25 @@ function teleportPlayerIfOob() {
 // const stats = new Stats();
 // document.body.appendChild(stats.dom);
 
-      function animate() {
-        // stats.begin();
-    const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
-
-    for (let i = 0; i < STEPS_PER_FRAME; i++) {
-      updateSpheres(deltaTime);
-      updatePlayer(deltaTime);
-        controls(deltaTime);
-      
-        Object.values(enemies).forEach(enemy => {
-          if (enemy.collider) {
-            updateEnemyCollisions(enemy);
-          }
-        });
-       
-        teleportPlayerIfOob();
-            
-    }
-    renderer.render(scene, camera);
-    // stats.end();
-}
+let sky;
+function animate()  {
+  // stats.begin();
   
+const deltaTime = Math.min(0.05, clock.getDelta());
+if (sky) {
+sky.position.set(camera.position.x, 0, camera.position.z);
+}
+controls(deltaTime);
+updatePlayer(deltaTime);
+updateSpheres(deltaTime);
+
+Checkpoint();
+JumperCollision();
+JumperCollisionG();
+TeleporterCollision();
+teleportPlayerIfOob();
+
+renderer.render(scene, camera);
+// stats.end();
+}
  
