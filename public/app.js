@@ -486,7 +486,7 @@ function createPlayerModel(id) {
   const loader = new GLTFLoader();
   loader.load('player.glb', (gltf) => {
     const playerModel = gltf.scene;
-    playerModel.scale.set(0.8, 0.8, 0.8);  
+    playerModel.scale.set(0.6, 0.6, 0.6);  
    playerModel.userData.initialPosition = playerModel.position.clone();
     scene.add(playerModel);
     players[id] = playerModel;
