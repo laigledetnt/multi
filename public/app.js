@@ -34,7 +34,6 @@ playerNameInput.addEventListener('keydown', (e) => {
     submitNameButton.click();
   }
 });
-
 });
 
 // Lorsqu'un message est reçu du serveur
@@ -57,6 +56,10 @@ chatInput.addEventListener('keydown', (e) => {
     socket.emit('chat message', message);
     chatInput.value = '';
   }
+});
+socket.on('achievementUnlocked', ({ id, description }) => {
+  console.log(`Succès débloqué : ${description}`);
+  showAchievementPopup(description); // fonction personnalisée
 });
 
 let players = {}; 
@@ -391,6 +394,7 @@ loaderp.load('sky.jpg', (texture) => {
         if (playerOnFloor) {
           if (keyStates['Space']) {
             playerVelocity.y = 23;
+            socket.emit('playerJumped');
           }
         }
       }
@@ -431,6 +435,27 @@ loaderp.load('sky.jpg', (texture) => {
                 break; 
             }
         }
+    }
+  
+
+    socket.on('achievementUnlocked', ({ id, description }) => {
+      console.log(`🏆 Succès débloqué : ${description}`);
+      showAchievementPopup(description);
+    });
+    
+    function showAchievementPopup(text) {
+      const popup = document.createElement('div');
+      popup.textContent = `⭐Succès débloqué⭐: ${text}`;
+      popup.style.position = 'absolute';
+      popup.style.top = '20px';
+      popup.style.right = '20px';
+      popup.style.background = '#2cd1c0';
+      popup.style.padding = '10px';
+      popup.style.borderRadius = '8px';
+      popup.style.zIndex = 1000;
+      popup.style.fontFamily = 'sans-serif';
+      document.body.appendChild(popup);
+      setTimeout(() => popup.remove(), 3000);
     }
     
     const loader = new GLTFLoader();

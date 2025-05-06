@@ -19,9 +19,21 @@ io.on('connection', (socket) => {
     id: socket.id,
     name: 'Joueur ' + socket.id,
     position: { x: 0, y: 0, z: 0 },
-    rotationY: 0
+    rotationY: 0,
+    jumpCount: 0,
+    achievements: []
   };
-
+  
+  socket.on('playerJumped', () => {
+    players[socket.id].jumpCount++;
+    checkAchievements(players[socket.id], socket);
+  });
+  
+  socket.on('checkpointReached', () => {
+    players[socket.id].checkpointsReached++;
+    checkAchievements(players[socket.id], socket);
+  });
+  
   
   socket.emit('currentPlayers', players);
 
@@ -44,8 +56,12 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
   });
 
+ 
+
   socket.on('chat message', (message) => {
+   
     console.log(players[socket.id].name, ':', message);
+    console.log(players[socket.id].jumpCount);
     io.emit('chat message', { id: socket.id, message, name: players[socket.id].name });
   });
 
@@ -62,3 +78,25 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);
 });
+const achievements = {
+  firstJump: {
+    id: '1Jump',
+    description: 'Faire son premier saut',
+    condition: (player) => player.jumpCount >= 1,
+  },
+
+};
+
+function checkAchievements(player, socket) {
+  for (const key in achievements) {
+    const achievement = achievements[key];
+    if (!player.achievements.includes(achievement.id) && achievement.condition(player)) {
+      player.achievements.push(achievement.id);
+      socket.emit('achievementUnlocked', {
+        id: achievement.id,
+        description: achievement.description,
+      });
+    }
+  }
+}
+
