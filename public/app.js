@@ -59,7 +59,7 @@ chatInput.addEventListener('keydown', (e) => {
 });
 socket.on('achievementUnlocked', ({ id, description }) => {
   console.log(`Succès débloqué : ${description}`);
-  showAchievementPopup(description); // fonction personnalisée
+  showAchievementPopup(description); 
 });
 
 let players = {}; 
@@ -95,22 +95,19 @@ function removePlayerModel(playerId) {
 
 
 socket.on('currentPlayers', (existingPlayers) => {
-  // Créer les modèles des joueurs existants
   for (const id in existingPlayers) {
-    createPlayerModel(id);
-    updatePlayerPosition(id, existingPlayers[id]);
+    createPlayerModel(id, existingPlayers[id]);
   }
 });
 
-socket.on('playerMoved', (data) => {
-  const { id, playerData } = data;
+socket.on('playerMoved', ({ id, playerData }) => {
   if (id === socket.id) return;
   if (!players[id]) {
-    createPlayerModel(id); // Crée le modèle du joueur si nécessaire
+    createPlayerModel(id, playerData);
+  } else {
+    updatePlayerPosition(id, playerData);
   }
-  updatePlayerPosition(id, playerData);
 });
-
 
 
 socket.on('playerDisconnected', (playerId) => {

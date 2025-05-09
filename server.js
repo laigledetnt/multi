@@ -24,17 +24,6 @@ io.on('connection', (socket) => {
     achievements: []
   };
   
-  socket.on('playerJumped', () => {
-    players[socket.id].jumpCount++;
-    checkAchievements(players[socket.id], socket);
-  });
-  
-  socket.on('checkpointReached', () => {
-    players[socket.id].checkpointsReached++;
-    checkAchievements(players[socket.id], socket);
-  });
-  
-  
   socket.emit('currentPlayers', players);
 
   socket.on('setPlayerName', (name) => {
@@ -44,6 +33,7 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('playerNameUpdated', { id: socket.id, name: players[socket.id].name });
     socket.emit('playerNameUpdated', { id: socket.id, name: players[socket.id].name });
   });
+  
 
   socket.on('playerMoved', (playerData) => {
     players[socket.id].position = {
@@ -56,7 +46,15 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('playerMoved', { id: socket.id, playerData });
   });
 
- 
+ socket.on('playerJumped', () => {
+    players[socket.id].jumpCount++;
+    checkAchievements(players[socket.id], socket);
+  });
+  
+  socket.on('checkpointReached', () => {
+    players[socket.id].checkpointsReached++;
+    checkAchievements(players[socket.id], socket);
+  });
 
   socket.on('chat message', (message) => {
    
