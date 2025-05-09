@@ -533,7 +533,7 @@ const deltaTime = Math.min(0.05, clock.getDelta());
 if (sky) {
 sky.position.set(camera.position.x, 0, camera.position.z);
 }
-
+ 
 controls(deltaTime);
 updatePlayer(deltaTime);
 updateSpheres(deltaTime);
