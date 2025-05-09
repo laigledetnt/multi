@@ -118,7 +118,9 @@ socket.on('playerDisconnected', (playerId) => {
 });
 
 
-
+socket.on('achievementUnlocked', ({ id, description }) => {
+  showAchievementPopup(description);
+});
 
 const clock = new THREE.Clock();
 
@@ -417,6 +419,7 @@ loaderp.load('sky.jpg', (texture) => {
             }
         });
     }
+
     function JumperCollisionG() {
         jumpersG.forEach((jumperGBox) => {
             const result = playerCollider.intersectsBox(jumperGBox);
@@ -426,6 +429,7 @@ loaderp.load('sky.jpg', (texture) => {
             }
         });
     }
+
     function TeleporterCollision() {
         for (const { box, target } of teleporters) {
             if (playerCollider.intersectsBox(box)) {
@@ -436,13 +440,7 @@ loaderp.load('sky.jpg', (texture) => {
             }
         }
     }
-  
 
-    socket.on('achievementUnlocked', ({ id, description }) => {
-      console.log(`🏆 Succès débloqué : ${description}`);
-      showAchievementPopup(description);
-    });
-    
     function showAchievementPopup(text) {
       const popup = document.createElement('div');
       popup.textContent = `⭐Succès débloqué⭐: ${text}`;
@@ -459,11 +457,11 @@ loaderp.load('sky.jpg', (texture) => {
     }
     
     const loader = new GLTFLoader();
-          let jumpersG = []; 
-          let jumpers = [];
-          let checkpoints = [];
-          let teleporters = [];
-          let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
+        let jumpersG = []; 
+        let jumpers = [];
+        let checkpoints = [];
+        let teleporters = [];
+        let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
 
 loader.load('world.glb', (gltf) => {
   scene.add(gltf.scene);
@@ -484,26 +482,24 @@ loader.load('world.glb', (gltf) => {
           jumpersG.push(box);  
       }
       if (child.isMesh && child.name.startsWith("TeleporterTo_")) {
-  const parts = child.name.split("_");
-  if (parts.length === 4) {
-      const toNumber = (str) => parseFloat(str.replace("m", "-"));
+          const parts = child.name.split("_");
+      if (parts.length === 4) {
+          const toNumber = (str) => parseFloat(str.replace("m", "-"));
 
-      const x = toNumber(parts[1]);
-      const y = toNumber(parts[2]);
-      const z = toNumber(parts[3]);
+          const x = toNumber(parts[1]);
+          const y = toNumber(parts[2]);
+          const z = toNumber(parts[3]);
 
-      const box = new THREE.Box3().setFromObject(child);
-      const target = new THREE.Vector3(x, y, z);
+          const box = new THREE.Box3().setFromObject(child);
+          const target = new THREE.Vector3(x, y, z);
 
-      teleporters.push({ box, target });
+          teleporters.push({ box, target });
   }
 }
       
   });
      
 });
-
-
 
 function createPlayerModel(id) {
   if (id === socket.id) return;
@@ -517,10 +513,6 @@ function createPlayerModel(id) {
     players[id] = playerModel;
   });
 }
-
-
-
-
 
 function teleportPlayerIfOob() {
     if (camera.position.y <= 1) {
@@ -536,11 +528,12 @@ function teleportPlayerIfOob() {
 let sky;
 function animate()  {
   // stats.begin();
-  
 const deltaTime = Math.min(0.05, clock.getDelta());
+
 if (sky) {
 sky.position.set(camera.position.x, 0, camera.position.z);
 }
+
 controls(deltaTime);
 updatePlayer(deltaTime);
 updateSpheres(deltaTime);
