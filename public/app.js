@@ -159,6 +159,83 @@ loaderp.load('sky.jpg', (texture) => {
       
      
 
+
+function createSmoke(position) {
+  const particleCount = 5000;
+  const geometry = new THREE.BufferGeometry();
+  const positions = [];
+  const velocities = [];
+
+for (let i = 0; i < particleCount; i++) {
+  positions.push(position.x, position.y, position.z);
+
+  // Distribution sphérique uniforme
+  const u = Math.random();
+  const v = Math.random();
+  const theta = u * 2.0 * Math.PI;
+  const phi = Math.acos(2.0 * v - 1.0);
+  const r = Math.cbrt(Math.random()); // cube root = densité sphérique
+
+  const sinPhi = Math.sin(phi);
+  const vx = r * sinPhi * Math.cos(theta);
+  const vy = r * Math.cos(phi);
+  const vz = r * sinPhi * Math.sin(theta);
+
+  const spread = 1.5;
+  velocities.push(vx * spread, vy * spread, vz * spread);
+}
+
+
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.userData.velocities = velocities;
+
+  const material = new THREE.PointsMaterial({
+    size: 0.9,
+    transparent: true,
+    opacity: 10,
+    depthWrite: false,
+    color: 0x333333
+  });
+
+  const particles = new THREE.Points(geometry, material);
+  scene.add(particles);
+
+  const lifespan = 1000; 
+  const start = performance.now();
+
+  function animateSmoke() {
+    const now = performance.now();
+    const elapsed = now - start;
+    const positions = geometry.attributes.position.array;
+    const velocities = geometry.userData.velocities;
+    const speedf = 0.4; // + petit = + lent
+
+    for (let i = 0; i < velocities.length; i += 3) {
+      positions[i] += velocities[i] * speedf;
+      positions[i + 1] += velocities[i + 1] * speedf;
+      positions[i + 2] += velocities[i + 2] * speedf;
+    }
+
+    geometry.attributes.position.needsUpdate = true;
+    material.opacity = 1.2 - (elapsed / lifespan); // fondu lent
+
+    if (elapsed < lifespan) {
+      requestAnimationFrame(animateSmoke);
+    } else {
+      setTimeout(() => {
+        scene.remove(particles);
+        geometry.dispose();
+        material.dispose();
+      }, 8000); // garde les particules mortes encore un moment si besoin
+    }
+  }
+
+  animateSmoke();
+}
+
+
+
+
       const GRAVITY = 40;
 
       const NUM_SPHERES = 1;
@@ -199,11 +276,19 @@ loaderp.load('sky.jpg', (texture) => {
       let playerOnFloor = false;
       let mouseTime = 0;
 
+      let sky;
+
       const keyStates = {};
 
       const vector1 = new THREE.Vector3();
       const vector2 = new THREE.Vector3();
       const vector3 = new THREE.Vector3();
+
+
+      const mineSound = new Audio('explosion.mp3');
+      mineSound.volume = 1;
+
+      let lastMineHitTime = 0;
 
       document.addEventListener('keydown', (event) => {
         keyStates[event.code] = true;
@@ -427,6 +512,59 @@ loaderp.load('sky.jpg', (texture) => {
         });
     }
 
+  function Evr() {
+        evr.forEach((evrBox) => {
+            const result = playerCollider.intersectsBox(evrBox);
+    
+            if (result) {
+                 socket.emit('Evr');
+            }
+        });
+    }
+
+    let cameraShakeTime = 0;
+let cameraShakeIntensity = 0;
+function shakeCamera() {
+  const startTime = performance.now();
+
+function startCameraShake(intensity = 0.005, duration = 300) {
+  cameraShakeTime = duration;
+  cameraShakeIntensity = intensity;
+}
+
+  startCameraShake(0.1, 300);
+}
+
+function MineCollision() {
+  const now = performance.now();
+
+  mines.forEach((mineBox) => {
+    if (playerCollider.intersectsBox(mineBox)) {
+
+      shakeCamera(100, 40000);
+      if (now - lastMineHitTime < 1000) return;
+      lastMineHitTime = now;
+
+     
+      mineSound.currentTime = 0;
+      mineSound.play();
+
+     
+
+      createSmoke(playerCollider.end.clone());
+      playerVelocity.y = 100;
+      
+      setTimeout(() => {
+        playerVelocity.y = 0;
+    playerCollider.start.copy(lastCheckpoint).add(new THREE.Vector3(0, 0.35, 0));
+    playerCollider.end.copy(lastCheckpoint).add(new THREE.Vector3(0, 3, 0));
+    camera.position.copy(playerCollider.end);
+  }, 2500);
+       
+    }
+  });
+}
+
     function TeleporterCollision() {
         for (const { box, target } of teleporters) {
             if (playerCollider.intersectsBox(box)) {
@@ -459,6 +597,8 @@ loaderp.load('sky.jpg', (texture) => {
         let checkpoints = [];
         let teleporters = [];
         let lastCheckpoint = new THREE.Vector3(0, 10, 0); 
+        let mines = [];
+        let evr = [];
 
 loader.load('world.glb', (gltf) => {
   scene.add(gltf.scene);
@@ -491,11 +631,21 @@ loader.load('world.glb', (gltf) => {
           const target = new THREE.Vector3(x, y, z);
 
           teleporters.push({ box, target });
-  }
-}
+          }
+            }
       
-  });
-     
+       
+      if (child.isMesh && child.name.includes("Mine")) {
+        const box = new THREE.Box3().setFromObject(child);
+        mines.push(box);
+      }
+      if (child.isMesh && child.name.includes("Evr")) {            
+          const box = new THREE.Box3().setFromObject(child);
+          evr.push(box);  
+      }
+      
+
+       });
 });
 
 function createPlayerModel(id) {
@@ -509,6 +659,7 @@ function createPlayerModel(id) {
     scene.add(playerModel);
     players[id] = playerModel;
   });
+  
 }
 
 function teleportPlayerIfOob() {
@@ -519,10 +670,12 @@ function teleportPlayerIfOob() {
     }
 }
 
+
 // const stats = new Stats();
 // document.body.appendChild(stats.dom);
 
-let sky;
+
+
 function animate()  {
   // stats.begin();
 const deltaTime = Math.min(0.05, clock.getDelta());
@@ -539,8 +692,18 @@ Checkpoint();
 JumperCollision();
 JumperCollisionG();
 TeleporterCollision();
+MineCollision();
+Evr();
 teleportPlayerIfOob();
+if (cameraShakeTime > 0) {
+  cameraShakeTime -= clock.getDelta() * 1000;
 
+  const shakeX = (Math.random() - 0.5) * cameraShakeIntensity;
+  const shakeY = (Math.random() - 0.5) * cameraShakeIntensity;
+
+  camera.rotation.x += shakeX;
+  camera.rotation.y += shakeY;
+}
 renderer.render(scene, camera);
 // stats.end();
 }

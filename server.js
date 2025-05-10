@@ -19,6 +19,7 @@ io.on('connection', (socket) => {
     position: { x: 0, y: 0, z: 0 },
     rotationY: 0,
     jumpCount: 0,
+    Ev:0,
     achievements: []
   };
   
@@ -48,12 +49,12 @@ io.on('connection', (socket) => {
     players[socket.id].jumpCount++;
     checkAchievements(players[socket.id], socket);
   });
-  
-  socket.on('checkpointReached', () => {
-    players[socket.id].checkpointsReached++;
+  socket.on('Evr', () => {
+    players[socket.id].Ev++;
     checkAchievements(players[socket.id], socket);
   });
-
+  
+  
   socket.on('chat message', (message) => {
    
     console.log(players[socket.id].name, ':', message);
@@ -80,8 +81,13 @@ const achievements = {
     description: 'Faire son premier saut',
     condition: (player) => player.jumpCount >= 1,
   },
-
+  strangeDiscovery: {
+    id: 'E',
+    description: 'Découverte EXPLOSIVE',
+    condition: (player) => player.Ev >= 1,
+  },
 };
+
 
 function checkAchievements(player, socket) {
   for (const key in achievements) {
